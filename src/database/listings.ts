@@ -76,10 +76,6 @@ class Database extends Dexie {
                     ]),
                 );
 
-            console.log(
-                "Delete section's previous listings",
-                await previousListingsInSection.toArray(),
-            );
             await previousListingsInSection.delete();
 
             db.listings.bulkAdd(

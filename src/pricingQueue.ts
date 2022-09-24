@@ -2,6 +2,10 @@ export function getItemsToPrice(): string[] {
     return JSON.parse(localStorage.getItem("davelu.itemsToPrice") || "[]");
 }
 
+export function setItemsToPrice(pricingStack: string[]) {
+    localStorage.setItem("davelu.itemsToPrice", JSON.stringify(pricingStack));
+}
+
 export function pushNextItemToPrice(itemName: string) {
     itemName = itemName.trim();
     const pricingStack = getItemsToPrice();
@@ -10,13 +14,13 @@ export function pushNextItemToPrice(itemName: string) {
         pricingStack.splice(existingTurnOrder, 1);
     }
     pricingStack.push(itemName);
-    localStorage.setItem("davelu.itemsToPrice", JSON.stringify(pricingStack));
+    setItemsToPrice(pricingStack);
 }
 
 export function popNextItemToPrice(): string | null {
     const pricingStack = getItemsToPrice();
     const nextItem = pricingStack.pop();
-    localStorage.setItem("davelu.itemsToPrice", JSON.stringify(pricingStack));
+    setItemsToPrice(pricingStack);
     return nextItem || null;
 }
 

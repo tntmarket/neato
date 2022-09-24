@@ -1,6 +1,6 @@
-import { $ } from "@src/util/domHelpers";
-import { assume } from "@src/util/typeAssertions";
-import { db } from "@src/database/listings";
+import {$} from "@src/util/domHelpers";
+import {assume} from "@src/util/typeAssertions";
+import {db} from "@src/database/listings";
 
 function updateStaleListingsBasedOnUserShop() {
     const pageText = assume($(".content")).innerText;
@@ -26,3 +26,4 @@ function updateStaleListingsBasedOnUserShop() {
 }
 
 updateStaleListingsBasedOnUserShop();
+

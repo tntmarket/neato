@@ -6,6 +6,7 @@ import {
     pushNextItemToPrice,
 } from "@src/pricingQueue";
 import { db, ListingData } from "@src/database/listings";
+import { getSetting } from "@src/util/localStorage";
 
 function priceFromRow(row: HTMLElement): ListingData {
     const [userName, _, quantity, __, price] = row.innerText.split("\n");
@@ -18,11 +19,12 @@ function priceFromRow(row: HTMLElement): ListingData {
     };
 }
 
+const REFRESH_DELAY = 537;
+
 function checkPrice(
     itemName = "One Dubloon Coin",
     numberOfUniquePagesToCheck = 5,
     maxNumberOfRequests = 8,
-    waitTime = 537,
 ) {
     console.log("Checking price for ", itemName);
     let requestNumber = 0;
@@ -32,7 +34,7 @@ function checkPrice(
     async function refreshPrices() {
         requestNumber += 1;
         console.log("Checking prices", requestNumber);
-        await sleep(randomPercentRange(waitTime, 0.8));
+        await sleep(randomPercentRange(REFRESH_DELAY, 0.8));
         const resubmitButton = assume(
             document.querySelector<HTMLElement>("#resubmitWizard"),
         );
@@ -55,7 +57,6 @@ function checkPrice(
             });
 
         await db.upsertListingsSection(itemName, listings);
-        console.log("dexie entries: ", await db.getListings(itemName));
 
         const newPricesWereFound = Object.keys(prices).length > numberOfPrices;
         if (newPricesWereFound) {
@@ -79,7 +80,7 @@ function checkPrice(
             pushNextItemToPrice(itemName);
             setTimeout(() => {
                 location.reload();
-            }, millisToNextHour + randomPercentRange(getDelay(), 0.8));
+            }, millisToNextHour + randomPercentRange(delay.get(), 0.8));
         }
 
         await savePrices();
@@ -89,7 +90,7 @@ function checkPrice(
         );
 
         const itemIsWorthless =
-            sortedPrices[0] && sortedPrices[0].price < getPriceThreshold();
+            sortedPrices[0] && sortedPrices[0].price < priceThreshold.get();
         if (itemIsWorthless) {
             console.log(
                 `${itemName} is worthless with a price of ${sortedPrices[0].price}`,
@@ -103,7 +104,7 @@ function checkPrice(
         ) {
             observer.disconnect();
 
-            await sleep(randomPercentRange(getDelay(), 0.8));
+            await sleep(randomPercentRange(delay.get(), 0.8));
             document
                 .querySelectorAll<HTMLElement>(".wizard-button__2020")[1]
                 .click();
@@ -138,35 +139,15 @@ function processQueueItem() {
     checkPrice(itemName);
 }
 
-function getIsAutoProcessingQueue() {
-    return (
-        localStorage.getItem("davelu.automaticallyProcessQueue") === "true" ||
-        false
-    );
-}
+const isAutoProcessingQueue = getSetting(
+    "davelu.automaticallyProcessQueue",
+    false,
+    (value) => value === "true",
+);
 
-function setIsAutoProcessingQueue(autoProcess: boolean) {
-    return localStorage.setItem(
-        "davelu.automaticallyProcessQueue",
-        autoProcess.toString(),
-    );
-}
+const priceThreshold = getSetting("abortIfUnderPrice", 1000, parseInt);
 
-function getPriceThreshold(): number {
-    return parseInt(localStorage.getItem("abortIfUnderPrice") || "1000");
-}
-
-function setPriceThreshold(price: string) {
-    return localStorage.setItem("abortIfUnderPrice", price);
-}
-
-function getDelay(): number {
-    return parseInt(localStorage.getItem("shopWizardSearchDelay") || "68765");
-}
-
-function setDelay(millis: string) {
-    return localStorage.setItem("shopWizardSearchDelay", millis);
-}
+const delay = getSetting("shopWizardSearchDelay", 1000, parseInt);
 
 function refreshHUD() {
     const overlay = document.createElement("div");
@@ -196,17 +177,17 @@ function refreshHUD() {
         });
 
     const playPauseButton = document.createElement("button");
-    const automaticallyProcessQueue = getIsAutoProcessingQueue();
+    const automaticallyProcessQueue = isAutoProcessingQueue.get();
     if (automaticallyProcessQueue) {
         playPauseButton.append("PAUSE");
         playPauseButton.onclick = () => {
-            setIsAutoProcessingQueue(false);
+            isAutoProcessingQueue.set(false);
             playPauseButton.innerHTML = "Pausing...";
         };
     } else {
         playPauseButton.append("PLAY");
         playPauseButton.onclick = () => {
-            setIsAutoProcessingQueue(true);
+            isAutoProcessingQueue.set(true);
             location.reload();
         };
     }
@@ -231,8 +212,8 @@ function refreshHUD() {
     const delayInput = document.createElement("input");
     delayInput.type = "text";
     delayInput.placeholder = "Delay";
-    delayInput.value = getDelay().toString();
-    delayInput.onchange = () => setDelay(delayInput.value);
+    delayInput.value = delay.get().toString();
+    delayInput.onchange = () => delay.set(parseInt(delayInput.value));
     overlay.appendChild(delayInput);
 
     const skipButton = document.createElement("button");
@@ -248,13 +229,14 @@ function refreshHUD() {
     const thresholdInput = document.createElement("input");
     thresholdInput.type = "text";
     thresholdInput.placeholder = "MinPrice";
-    thresholdInput.value = getPriceThreshold().toString();
-    thresholdInput.onchange = () => setPriceThreshold(thresholdInput.value);
+    thresholdInput.value = priceThreshold.get().toString();
+    thresholdInput.onchange = () =>
+        priceThreshold.set(parseInt(thresholdInput.value));
     overlay.appendChild(thresholdInput);
 }
 
 refreshHUD();
 
-if (getIsAutoProcessingQueue()) {
+if (isAutoProcessingQueue.get()) {
     setTimeout(processQueueItem, randomPercentRange(1234, 0.8));
 }

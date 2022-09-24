@@ -35,6 +35,7 @@ const charToSection: { [firstChar: string]: number } = {
     "7": 7,
     "8": 8,
     "9": 9,
+    _: 10,
 };
 
 const sectionToChars = [
@@ -48,7 +49,7 @@ const sectionToChars = [
     ["h", "u", "7"],
     ["i", "v", "8"],
     ["j", "w", "9"],
-    ["k", "x", "0"],
+    ["k", "x", "_"],
     ["l", "y"],
     ["m", "z"],
 ];
