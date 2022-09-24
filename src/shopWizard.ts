@@ -18,63 +18,6 @@ function priceFromRow(row: HTMLElement): ListingData {
     };
 }
 
-type ItemDatabase = {
-    [itemName: string]: ItemEntry;
-};
-type ItemEntry = {
-    lastUpdated: number; // milliseconds
-    topPrices: ListingData[];
-};
-
-function setItemDB(itemDB: ItemDatabase) {
-    return localStorage.setItem(
-        "davelu.shopWizardPriceDatabase",
-        JSON.stringify(itemDB),
-    );
-}
-
-function addListings(itemName: string, priceEntries: ListingData[]) {
-    const allItemPrices = getItemDB();
-    allItemPrices[itemName] = {
-        lastUpdated: Date.now(),
-        topPrices: priceEntries,
-    };
-    console.log(JSON.stringify(priceEntries, null, 2));
-    setItemDB(allItemPrices);
-}
-
-function getItemDB(): ItemDatabase {
-    return JSON.parse(
-        localStorage.getItem("davelu.shopWizardPriceDatabase") || "{}",
-    );
-}
-
-async function migrateLocalStorageToDexie() {
-    const itemDB = getItemDB();
-    console.log("START");
-    await db.listings.clear();
-    await Promise.all(
-        Object.entries(itemDB).map(([itemName, itemEntry]) =>
-            db.addListings(
-                itemName,
-                itemEntry.lastUpdated,
-                itemEntry.topPrices.map((entry) => ({
-                    link: entry.link,
-                    price: entry.price,
-                    quantity: entry.quantity,
-                    userName: entry.username || entry.userName,
-                })),
-            ),
-        ),
-    );
-    console.log("END");
-    console.log(await db.getAllListings());
-}
-
-migrateLocalStorageToDexie();
-
-const LISTINGS_TO_SAVE = 6;
-
 function checkPrice(
     itemName = "One Dubloon Coin",
     numberOfUniquePagesToCheck = 5,
@@ -159,10 +102,6 @@ function checkPrice(
             itemIsWorthless
         ) {
             observer.disconnect();
-
-            const topPrices = sortedPrices.slice(0, LISTINGS_TO_SAVE);
-
-            addListings(itemName, topPrices);
 
             await sleep(randomPercentRange(getDelay(), 0.8));
             document

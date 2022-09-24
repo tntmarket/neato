@@ -32,6 +32,10 @@
         {
             "matches": ["https://www.neopets.com/faerieland/employ/employment.phtml?type=jobs&voucher=basic*"],
             "js": ["js/employmentAgency.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/browseshop.phtml?*"],
+            "js": ["js/userShop.js"]
         }
     ],
     "background": {

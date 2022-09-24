@@ -1,5 +1,5 @@
 export function $All<E extends HTMLElement = HTMLElement>(selector: string) {
-    return document.querySelectorAll<E>(selector);
+    return Array.from(document.querySelectorAll<E>(selector));
 }
 
 export function $<E extends HTMLElement = HTMLElement>(selector: string) {

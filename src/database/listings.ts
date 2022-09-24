@@ -13,13 +13,25 @@ export type ListingData = {
     userName: string;
 };
 
+type User = {
+    userName: string;
+};
+
 class Database extends Dexie {
     listings!: Dexie.Table<Listing>;
+    frozenUsers!: Dexie.Table<User>;
 
     constructor() {
         super("NeatoDatabase");
-        this.version(1).stores({
-            listings: "[itemName+userName],price,lastSeen",
+        this.version(3).stores({
+            listings: "[itemName+userName],price,lastSeen,link",
+            frozenUsers: "userName",
+        });
+    }
+
+    async trackUserWasFrozen(userName: string): Promise<void> {
+        await db.transaction("rw", db.frozenUsers, async () => {
+            await db.frozenUsers.put({ userName });
         });
     }
 
@@ -80,16 +92,29 @@ class Database extends Dexie {
         });
     }
 
-    getAllListings(): Promise<Listing[]> {
-        return db.transaction("r", db.listings, () =>
-            db.listings.limit(20000).toArray(),
-        );
+    updateListingQuantity(link: string, quantity: number): Promise<void> {
+        return db.transaction("rw", db.listings, async () => {
+            await db.listings.where({ link }).modify({ quantity });
+        });
+    }
+
+    clearListing(link: string): Promise<void> {
+        return db.transaction("rw", db.listings, async () => {
+            await db.listings.where({ link }).delete();
+        });
     }
 
     getListings(itemName: string): Promise<Listing[]> {
-        return db.transaction("r", db.listings, () =>
-            db.listings.where({ itemName }).sortBy("price"),
-        );
+        return db.transaction("r", db.listings, db.frozenUsers, async () => {
+            const frozenUsers = await db.frozenUsers.toArray();
+            const frozenUserNames = frozenUsers.map((user) => user.userName);
+
+            return db.listings
+                .where({ itemName })
+                .filter(({ userName }) => !frozenUserNames.includes(userName))
+                .limit(6)
+                .sortBy("price");
+        });
     }
 }
 

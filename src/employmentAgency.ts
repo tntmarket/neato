@@ -26,7 +26,7 @@ function getFulfillPlan(quantity: number, topPrices: Listing[]) {
 
 const MIN_REWARD = 4000;
 
-$All('center td[colspan="2"]').forEach(async (row) => {
+async function annotateJobPosting(row: HTMLElement) {
     const itemName = row.innerText.split("\n")[0].split(" of:")[1].trim();
     const quantity = parseInt(
         row.innerText.split("\n")[0].split(" of:")[0].replace("Find", ""),
@@ -73,6 +73,8 @@ $All('center td[colspan="2"]').forEach(async (row) => {
     } else if (reward >= MIN_REWARD) {
         stageItemForPricing(itemName);
     }
-});
+}
 
-overlayButtonToCommitItemsForPricing();
+Promise.all($All('center td[colspan="2"]').map(annotateJobPosting)).then(
+    overlayButtonToCommitItemsForPricing,
+);

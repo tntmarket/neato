@@ -2,6 +2,7 @@ const path = require("path");
 
 module.exports = {
     entry: {
+        userShop: path.join(__dirname, "src/userShop.ts"),
         employmentAgency: path.join(__dirname, "src/employmentAgency.ts"),
         gormball: path.join(__dirname, "src/gormball.ts"),
         myShopStock: path.join(__dirname, "src/myShopStock.ts"),

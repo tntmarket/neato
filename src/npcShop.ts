@@ -23,82 +23,80 @@ function getInfoContainer(item: HTMLElement): HTMLElement {
     return container;
 }
 
-function addProfitInfo() {
-    $All(".shop-item").forEach(async (item) => {
-        const name = assume(
-            item.querySelector<HTMLElement>(".item-name"),
-        ).innerText;
-        const extraInfo = getInfoContainer(item);
-        item.style.backgroundColor = "";
-        item.style.opacity = "";
+async function annotateShopItem(item: HTMLElement) {
+    const name = assume(
+        item.querySelector<HTMLElement>(".item-name"),
+    ).innerText;
 
-        const listings = await db.getListings(name);
+    const listings = await db.getListings(name);
 
-        if (listings.length === 0) {
-            item.style.opacity = "0.5";
-            stageItemForPricing(name);
-            return;
-        }
+    const extraInfo = getInfoContainer(item);
+    item.style.backgroundColor = "";
+    item.style.opacity = "";
 
-        const quantity = parseInt(
-            assume(item.querySelectorAll<HTMLElement>(".item-stock")[0])
-                .innerText,
-        );
-        const price = parseInt(
-            item
-                .querySelectorAll<HTMLInputElement>(".item-stock")[1]
-                .innerText.split("Cost: ")[1]
-                .replaceAll(",", ""),
-        );
-        const marketPrice = listings[0].price;
+    if (listings.length === 0) {
+        item.style.opacity = "0.5";
+        stageItemForPricing(name);
+        return;
+    }
 
-        const hagglePrice = price * 0.75;
-        const haggleProfit = marketPrice - hagglePrice;
-        const haggleProfitRatio = haggleProfit / hagglePrice;
+    const quantity = parseInt(
+        assume(item.querySelectorAll<HTMLElement>(".item-stock")[0]).innerText,
+    );
+    const price = parseInt(
+        item
+            .querySelectorAll<HTMLInputElement>(".item-stock")[1]
+            .innerText.split("Cost: ")[1]
+            .replaceAll(",", ""),
+    );
+    const marketPrice = listings[0].price;
 
-        const profit = marketPrice - price;
-        const profitRatio = profit / price;
+    const hagglePrice = price * 0.75;
+    const haggleProfit = marketPrice - hagglePrice;
+    const haggleProfitRatio = haggleProfit / hagglePrice;
 
-        const profitLabel = document.createElement("p");
-        profitLabel.className = "item-stock";
-        profitLabel.style.color = profit > 0 ? "darkgreen" : "darkred";
-        profitLabel.append(`${profit} / ${Math.round(profitRatio * 100)}%`);
-        extraInfo.append(profitLabel);
+    const profit = marketPrice - price;
+    const profitRatio = profit / price;
 
-        const haggleLabel = document.createElement("p");
-        haggleLabel.className = "item-stock";
-        haggleLabel.style.color = haggleProfit > 0 ? "darkgreen" : "darkred";
-        haggleLabel.append(
-            `${Math.round(haggleProfit)} / ${Math.round(
-                haggleProfitRatio * 100,
-            )}%`,
-        );
-        extraInfo.append(haggleLabel);
+    const profitLabel = document.createElement("p");
+    profitLabel.className = "item-stock";
+    profitLabel.style.color = profit > 0 ? "darkgreen" : "darkred";
+    profitLabel.append(`${profit} / ${Math.round(profitRatio * 100)}%`);
+    extraInfo.append(profitLabel);
 
-        const hagglePointsLabel = document.createElement("p");
-        hagglePointsLabel.className = "item-stock";
-        hagglePointsLabel.append(`
-            ${makeTypable(price * 0.33)},
-            ${makeTypable(price * 0.5)},
-            ${makeTypable(price * 0.66)},
-            ${makeTypable(price * 0.75)},
-        `);
-        extraInfo.append(hagglePointsLabel);
+    const haggleLabel = document.createElement("p");
+    haggleLabel.className = "item-stock";
+    haggleLabel.style.color = haggleProfit > 0 ? "darkgreen" : "darkred";
+    haggleLabel.append(
+        `${Math.round(haggleProfit)} / ${Math.round(haggleProfitRatio * 100)}%`,
+    );
+    extraInfo.append(haggleLabel);
 
-        if (profit > 10000 && profitRatio > 0.3) {
-            item.style.backgroundColor = "lightcoral";
-        } else if (
-            (haggleProfit > 2000 && haggleProfitRatio > 0.6) ||
-            (profit > 1000 && profitRatio > 2.0)
-        ) {
-            item.style.backgroundColor = "lightblue";
-        } else if (haggleProfit < 1000 || haggleProfitRatio < 0.2) {
-            item.style.opacity = "0.1";
-        }
-    });
+    const hagglePointsLabel = document.createElement("p");
+    hagglePointsLabel.className = "item-stock";
+    hagglePointsLabel.append(`
+        ${makeTypable(price * 0.33)},
+        ${makeTypable(price * 0.5)},
+        ${makeTypable(price * 0.66)},
+        ${makeTypable(price * 0.75)},
+    `);
+    extraInfo.append(hagglePointsLabel);
+
+    if (profit > 10000 && profitRatio > 0.3) {
+        item.style.backgroundColor = "lightcoral";
+    } else if (
+        (haggleProfit > 2000 && haggleProfitRatio > 0.6) ||
+        (profit > 1000 && profitRatio > 2.0)
+    ) {
+        item.style.backgroundColor = "lightblue";
+    } else if (haggleProfit < 1000 || haggleProfitRatio < 0.2) {
+        item.style.opacity = "0.1";
+    }
 }
 
-addProfitInfo();
-setInterval(addProfitInfo, 5000);
+async function addProfitInfo() {
+    await Promise.all($All(".shop-item").map(annotateShopItem));
+}
 
-overlayButtonToCommitItemsForPricing();
+addProfitInfo().then(overlayButtonToCommitItemsForPricing);
+setInterval(addProfitInfo, 5000);
