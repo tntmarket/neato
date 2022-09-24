@@ -1,10 +1,10 @@
-import { getItemDB } from "@src/itemDatabase";
 import {
     overlayButtonToCommitItemsForPricing,
     stageItemForPricing,
 } from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
-import { $, $All } from "@src/util/domHelpers";
+import { $All } from "@src/util/domHelpers";
+import { db } from "@src/database/listings";
 
 function makeTypable(price: number) {
     return Math.round(price);
@@ -24,11 +24,7 @@ function getInfoContainer(item: HTMLElement): HTMLElement {
 }
 
 function addProfitInfo() {
-    const itemDB = getItemDB();
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    window.itemDB = itemDB;
-    $All(".shop-item").forEach((item) => {
+    $All(".shop-item").forEach(async (item) => {
         const name = assume(
             item.querySelector<HTMLElement>(".item-name"),
         ).innerText;
@@ -36,8 +32,9 @@ function addProfitInfo() {
         item.style.backgroundColor = "";
         item.style.opacity = "";
 
-        const itemEntry = itemDB[name];
-        if (!itemEntry) {
+        const listings = await db.getListings(name);
+
+        if (listings.length === 0) {
             item.style.opacity = "0.5";
             stageItemForPricing(name);
             return;
@@ -53,7 +50,7 @@ function addProfitInfo() {
                 .innerText.split("Cost: ")[1]
                 .replaceAll(",", ""),
         );
-        const marketPrice = itemEntry.topPrices[0].price;
+        const marketPrice = listings[0].price;
 
         const hagglePrice = price * 0.75;
         const haggleProfit = marketPrice - hagglePrice;

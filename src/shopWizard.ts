@@ -1,22 +1,79 @@
 import { randomPercentRange, sleep } from "@src/util/randomDelay";
 import { assume } from "@src/util/typeAssertions";
-import { getItemDB, PriceEntry, setItemDB } from "@src/itemDatabase";
 import {
     getItemsToPrice,
     popNextItemToPrice,
     pushNextItemToPrice,
 } from "@src/pricingQueue";
+import { db, ListingData } from "@src/database/listings";
 
-function priceFromRow(row: HTMLElement) {
-    const [username, _, quantity, __, price] = row.innerText.split("\n");
+function priceFromRow(row: HTMLElement): ListingData {
+    const [userName, _, quantity, __, price] = row.innerText.split("\n");
 
     return {
-        username,
+        userName,
         quantity: parseInt(quantity),
         link: assume(row.querySelector("a")).href,
         price: parseInt(price.replaceAll(",", "")),
     };
 }
+
+type ItemDatabase = {
+    [itemName: string]: ItemEntry;
+};
+type ItemEntry = {
+    lastUpdated: number; // milliseconds
+    topPrices: ListingData[];
+};
+
+function setItemDB(itemDB: ItemDatabase) {
+    return localStorage.setItem(
+        "davelu.shopWizardPriceDatabase",
+        JSON.stringify(itemDB),
+    );
+}
+
+function addListings(itemName: string, priceEntries: ListingData[]) {
+    const allItemPrices = getItemDB();
+    allItemPrices[itemName] = {
+        lastUpdated: Date.now(),
+        topPrices: priceEntries,
+    };
+    console.log(JSON.stringify(priceEntries, null, 2));
+    setItemDB(allItemPrices);
+}
+
+function getItemDB(): ItemDatabase {
+    return JSON.parse(
+        localStorage.getItem("davelu.shopWizardPriceDatabase") || "{}",
+    );
+}
+
+async function migrateLocalStorageToDexie() {
+    const itemDB = getItemDB();
+    console.log("START");
+    await db.listings.clear();
+    await Promise.all(
+        Object.entries(itemDB).map(([itemName, itemEntry]) =>
+            db.addListings(
+                itemName,
+                itemEntry.lastUpdated,
+                itemEntry.topPrices.map((entry) => ({
+                    link: entry.link,
+                    price: entry.price,
+                    quantity: entry.quantity,
+                    userName: entry.username || entry.userName,
+                })),
+            ),
+        ),
+    );
+    console.log("END");
+    console.log(await db.getAllListings());
+}
+
+migrateLocalStorageToDexie();
+
+const LISTINGS_TO_SAVE = 6;
 
 function checkPrice(
     itemName = "One Dubloon Coin",
@@ -27,7 +84,7 @@ function checkPrice(
     console.log("Checking price for ", itemName);
     let requestNumber = 0;
     let uniquePages = 0;
-    const prices: { [username: string]: PriceEntry } = {};
+    const prices: { [userName: string]: ListingData } = {};
 
     async function refreshPrices() {
         requestNumber += 1;
@@ -39,17 +96,23 @@ function checkPrice(
         resubmitButton.click();
     }
 
-    function savePrices() {
+    async function savePrices() {
         const numberOfPrices = Object.keys(prices).length;
 
+        const listings: ListingData[] = [];
         document
             .querySelectorAll<HTMLElement>(
                 "#shopWizardFormResults li:not(.wizard-results-grid-header)",
             )
             .forEach((row) => {
                 const price = priceFromRow(row);
-                prices[price.username] = price;
+                prices[price.userName] = price;
+
+                listings.push(price);
             });
+
+        await db.upsertListingsSection(itemName, listings);
+        console.log("dexie entries: ", await db.getListings(itemName));
 
         const newPricesWereFound = Object.keys(prices).length > numberOfPrices;
         if (newPricesWereFound) {
@@ -76,13 +139,14 @@ function checkPrice(
             }, millisToNextHour + randomPercentRange(getDelay(), 0.8));
         }
 
-        savePrices();
+        await savePrices();
 
         const sortedPrices = Object.values(prices).sort(
             (priceA, priceB) => priceA.price - priceB.price,
         );
 
-        const itemIsWorthless = sortedPrices[0] && sortedPrices[0].price < 1000;
+        const itemIsWorthless =
+            sortedPrices[0] && sortedPrices[0].price < getPriceThreshold();
         if (itemIsWorthless) {
             console.log(
                 `${itemName} is worthless with a price of ${sortedPrices[0].price}`,
@@ -96,15 +160,9 @@ function checkPrice(
         ) {
             observer.disconnect();
 
-            const topPrices = sortedPrices.slice(0, 5);
+            const topPrices = sortedPrices.slice(0, LISTINGS_TO_SAVE);
 
-            console.log(JSON.stringify(topPrices, null, 2));
-            const allItemPrices = getItemDB();
-            allItemPrices[itemName] = {
-                lastUpdated: Date.now(),
-                topPrices,
-            };
-            setItemDB(allItemPrices);
+            addListings(itemName, topPrices);
 
             await sleep(randomPercentRange(getDelay(), 0.8));
             document
@@ -141,10 +199,6 @@ function processQueueItem() {
     checkPrice(itemName);
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-window.itemDB = getItemDB();
-
 function getIsAutoProcessingQueue() {
     return (
         localStorage.getItem("davelu.automaticallyProcessQueue") === "true" ||
@@ -157,6 +211,14 @@ function setIsAutoProcessingQueue(autoProcess: boolean) {
         "davelu.automaticallyProcessQueue",
         autoProcess.toString(),
     );
+}
+
+function getPriceThreshold(): number {
+    return parseInt(localStorage.getItem("abortIfUnderPrice") || "1000");
+}
+
+function setPriceThreshold(price: string) {
+    return localStorage.setItem("abortIfUnderPrice", price);
 }
 
 function getDelay(): number {
@@ -182,7 +244,7 @@ function refreshHUD() {
 
     const pricingQueue = document.createElement("div");
     pricingQueue.style.overflowY = "scroll";
-    pricingQueue.style.height = "250px";
+    pricingQueue.style.height = "200px";
     pricingQueue.style.marginBottom = "4px";
     overlay.appendChild(pricingQueue);
     // arrays pop from the back. reverse to show those ones first
@@ -243,6 +305,13 @@ function refreshHUD() {
     overlay.appendChild(skipButton);
 
     overlay.append(getItemsToPrice().length.toString());
+
+    const thresholdInput = document.createElement("input");
+    thresholdInput.type = "text";
+    thresholdInput.placeholder = "MinPrice";
+    thresholdInput.value = getPriceThreshold().toString();
+    thresholdInput.onchange = () => setPriceThreshold(thresholdInput.value);
+    overlay.appendChild(thresholdInput);
 }
 
 refreshHUD();

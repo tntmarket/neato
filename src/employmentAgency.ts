@@ -1,13 +1,11 @@
-import { getItemDB, PriceEntry } from "@src/itemDatabase";
 import { $All } from "@src/util/domHelpers";
 import {
     overlayButtonToCommitItemsForPricing,
     stageItemForPricing,
 } from "@src/pricingQueue";
+import { db, Listing } from "@src/database/listings";
 
-const itemDB = getItemDB();
-
-function getFulfillPlan(quantity: number, topPrices: PriceEntry[]) {
+function getFulfillPlan(quantity: number, topPrices: Listing[]) {
     const unGroupedPrices = topPrices.flatMap((price) =>
         Array(price.quantity).fill(price),
     );
@@ -28,7 +26,7 @@ function getFulfillPlan(quantity: number, topPrices: PriceEntry[]) {
 
 const MIN_REWARD = 4000;
 
-$All('center td[colspan="2"]').forEach((row) => {
+$All('center td[colspan="2"]').forEach(async (row) => {
     const itemName = row.innerText.split("\n")[0].split(" of:")[1].trim();
     const quantity = parseInt(
         row.innerText.split("\n")[0].split(" of:")[0].replace("Find", ""),
@@ -41,9 +39,9 @@ $All('center td[colspan="2"]').forEach((row) => {
         row.style.opacity = "0.15";
     }
 
-    const itemEntry = itemDB[itemName];
-    if (itemEntry) {
-        const fulfillPlan = getFulfillPlan(quantity, itemEntry.topPrices);
+    const listings = await db.getListings(itemName);
+    if (listings.length > 0) {
+        const fulfillPlan = getFulfillPlan(quantity, listings);
 
         const profitLabel = document.createElement("a");
         profitLabel.href = "javascript:void(0)";
@@ -61,13 +59,13 @@ $All('center td[colspan="2"]').forEach((row) => {
 
         const shops = document.createElement("div");
         shops.style.marginTop = "8px";
-        itemEntry.topPrices.forEach((price) => {
+        listings.forEach((listing) => {
             const shop = document.createElement("a");
             shop.style.marginRight = "12px";
             shop.href = "javascript:void(0)";
-            shop.text = ` ${price.price} x ${price.quantity} `;
+            shop.text = ` ${listing.price} x ${listing.quantity} `;
             shop.onclick = () => {
-                window.open(price.link);
+                window.open(listing.link);
             };
             shops.appendChild(shop);
         });

@@ -1,12 +1,7 @@
-import {
-    getItemDB,
-    getMarketPrice,
-    getMarketPriceEntry,
-    lowestPriceIsSelf,
-} from "@src/itemDatabase";
 import { pushNextItemToPrice } from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
-import { $All } from "@src/util/domHelpers";
+import {$, $All} from "@src/util/domHelpers";
+import { db, Listing } from "@src/database/listings";
 
 function stockedItemFromRow(row: HTMLElement) {
     const priceInput =
@@ -30,29 +25,52 @@ function underCut(marketPrice: number) {
     return Math.max(marketPrice - (marketPrice % 100) - 1, 1);
 }
 
-function priceStockItems(priceFreshnessInDays = 7) {
-    const itemDB = getItemDB();
+function getMarketPrice(listings: Listing[]) {
+    return getMarketPriceEntry(listings).price;
+}
 
-    $All('form[action="process_market.phtml"] tr').forEach((row) => {
+function getMarketPriceEntry(listings: Listing[]): Listing {
+    if (lowestPriceIsSelf(listings)) {
+        return listings[1];
+    }
+
+    return listings[0];
+}
+
+function getCurrentUser(): string | null {
+    const topRightCorner = $(".user");
+    if (topRightCorner) {
+        return topRightCorner.innerText.split("|")[0].split(" ")[1];
+    }
+    return null;
+}
+
+function lowestPriceIsSelf(listings: Listing[]) {
+    return listings[0].userName === getCurrentUser();
+}
+
+function priceStockItems(priceFreshnessInDays = 7) {
+    $All('form[action="process_market.phtml"] tr').forEach(async (row) => {
         const item = stockedItemFromRow(row);
         if (!item) {
             return;
         }
 
-        const itemEntry = itemDB[item.name];
+        const listings = await db.getListings(item.name);
 
-        if (!itemEntry) {
+        if (!listings) {
             pushNextItemToPrice(item.name);
             console.log(`${item.name} is not priced yet, submitting...`);
             return;
         }
 
-        if (daysAgo(itemEntry.lastUpdated) > priceFreshnessInDays) {
-            if (getMarketPrice(itemEntry) > 500) {
+        const marketPriceEntry = getMarketPriceEntry(listings);
+        if (daysAgo(marketPriceEntry.lastSeen) > priceFreshnessInDays) {
+            if (getMarketPrice(listings) > 500) {
                 pushNextItemToPrice(item.name);
                 console.log(
                     `${item.name} is ${daysAgo(
-                        itemEntry.lastUpdated,
+                        marketPriceEntry.lastSeen,
                     )} days stale, submitting...`,
                 );
             } else {
@@ -66,10 +84,10 @@ function priceStockItems(priceFreshnessInDays = 7) {
             row.querySelector<HTMLInputElement>('input[type="text"]'),
         );
 
-        const underCutPrice = underCut(getMarketPrice(itemEntry));
+        const underCutPrice = underCut(getMarketPrice(listings));
         const currentPrice = parseInt(priceInput.value);
 
-        if (lowestPriceIsSelf(itemEntry)) {
+        if (lowestPriceIsSelf(listings)) {
             console.log(`The cheapest price for ${item.name} is us already`);
             assume(priceInput.parentNode).append(" " + currentPrice.toString());
             return;
@@ -80,9 +98,7 @@ function priceStockItems(priceFreshnessInDays = 7) {
         }
 
         // Show the original price before discounting
-        console.log(
-            `${item.name}: undercutting ${getMarketPriceEntry(itemEntry).link}`,
-        );
+        console.log(`${item.name}: undercutting ${marketPriceEntry.link}`);
         assume(priceInput.parentNode).append(" " + currentPrice.toString());
         priceInput.value = underCutPrice.toString();
     });
