@@ -108,7 +108,6 @@ class Database extends Dexie {
             return db.listings
                 .where({ itemName })
                 .filter(({ userName }) => !frozenUserNames.includes(userName))
-                .limit(6)
                 .sortBy("price");
         });
     }

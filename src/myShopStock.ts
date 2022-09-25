@@ -58,7 +58,7 @@ function priceStockItems(priceFreshnessInDays = 7) {
 
         const listings = await db.getListings(item.name);
 
-        if (!listings) {
+        if (listings.length === 0) {
             pushNextItemToPrice(item.name);
             console.log(`${item.name} is not priced yet, submitting...`);
             return;

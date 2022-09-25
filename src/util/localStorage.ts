@@ -21,3 +21,15 @@ export function getSetting<T extends Serializable>(
         },
     };
 }
+
+export function getJsonSetting<T>(name: string, defaultValue: T): Setting<T> {
+    return {
+        get: () => {
+            const encoded = localStorage.getItem(name);
+            return encoded ? JSON.parse(encoded) : defaultValue;
+        },
+        set: (value) => {
+            localStorage.setItem(name, JSON.stringify(value));
+        },
+    };
+}

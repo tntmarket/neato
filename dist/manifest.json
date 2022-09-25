@@ -22,7 +22,7 @@
             "js": ["js/shopWizard.js"]
         },
         {
-            "matches": ["https://www.neopets.com/market.phtml?type=your*order_by=price"],
+            "matches": ["https://www.neopets.com/market.phtml?*type=your*"],
             "js": ["js/myShopStock.js"]
         },
         {
@@ -36,6 +36,14 @@
         {
             "matches": ["https://www.neopets.com/browseshop.phtml?*"],
             "js": ["js/userShop.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/index.phtml"],
+            "js": ["js/homePage.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/login*"],
+            "js": ["js/loginPage.js"]
         }
     ],
     "background": {

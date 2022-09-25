@@ -7,6 +7,8 @@ import {
 } from "@src/pricingQueue";
 import { db, ListingData } from "@src/database/listings";
 import { getSetting } from "@src/util/localStorage";
+import { submitItemsMissingFromDBToPrice } from "@src/adhoc/submitItemsMissingFromDBToPrice";
+import { switchToUnbannedAccount, waitTillNextHour } from "@src/accounts";
 
 function priceFromRow(row: HTMLElement): ListingData {
     const [userName, _, quantity, __, price] = row.innerText.split("\n");
@@ -71,16 +73,9 @@ function checkPrice(
                 document.querySelector<HTMLElement>("#shopWizardFormResults"),
             ).innerText.includes("too many searches")
         ) {
-            const millisInHour = 1000 * 60 * 60;
-            const millisToNextHour = millisInHour - (Date.now() % millisInHour);
-            console.log(
-                `Hit limit, resuming in ${millisToNextHour / 1000 / 60} mins`,
-            );
             // Re-push, so we can retry after the ban is lifted
             pushNextItemToPrice(itemName);
-            setTimeout(() => {
-                location.reload();
-            }, millisToNextHour + randomPercentRange(delay.get(), 0.8));
+            await switchToUnbannedAccount();
         }
 
         await savePrices();
@@ -103,6 +98,14 @@ function checkPrice(
             itemIsWorthless
         ) {
             observer.disconnect();
+
+            console.log(
+                JSON.stringify(
+                    (await db.getListings(itemName)).slice(0, 6),
+                    null,
+                    2,
+                ),
+            );
 
             await sleep(randomPercentRange(delay.get(), 0.8));
             document
@@ -233,6 +236,13 @@ function refreshHUD() {
     thresholdInput.onchange = () =>
         priceThreshold.set(parseInt(thresholdInput.value));
     overlay.appendChild(thresholdInput);
+
+    const newItemsTextArea = document.createElement("textarea");
+    newItemsTextArea.onchange = () => {
+        const itemsToStartMonitoring = newItemsTextArea.value.split("\n");
+        submitItemsMissingFromDBToPrice(itemsToStartMonitoring);
+    };
+    overlay.appendChild(newItemsTextArea);
 }
 
 refreshHUD();

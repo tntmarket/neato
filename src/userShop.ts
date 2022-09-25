@@ -1,6 +1,6 @@
-import {$} from "@src/util/domHelpers";
-import {assume} from "@src/util/typeAssertions";
-import {db} from "@src/database/listings";
+import { $ } from "@src/util/domHelpers";
+import { assume } from "@src/util/typeAssertions";
+import { db } from "@src/database/listings";
 
 function updateStaleListingsBasedOnUserShop() {
     const pageText = assume($(".content")).innerText;
@@ -22,8 +22,7 @@ function updateStaleListingsBasedOnUserShop() {
     }
     const quantity = parseInt(shopItem.innerText.split("\n")[2]);
     console.log(quantity);
-    db.updateListingQuantity(location.href, quantity);
+    db.updateListingQuantity(location.href.replace("&lower=0", ""), quantity);
 }
 
 updateStaleListingsBasedOnUserShop();
-

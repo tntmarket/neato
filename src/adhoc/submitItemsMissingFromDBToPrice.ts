@@ -2,7 +2,7 @@ import { pushNextItemToPrice, setItemsToPrice } from "@src/pricingQueue";
 import { db } from "@src/database/listings";
 
 export function submitItemsMissingFromDBToPrice(itemNames: string[]) {
-    setItemsToPrice([]);
+    // setItemsToPrice([]);
     return Promise.all(
         itemNames.map(async (item) => {
             const listings = await db.getListings(item);
