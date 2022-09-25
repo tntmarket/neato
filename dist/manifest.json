@@ -14,12 +14,20 @@
     },
     "content_scripts": [
         {
+            "matches": ["https://www.neopets.com/faerieland/employ/employment.phtml?type=jobs&voucher=basic*"],
+            "js": ["js/employmentAgency.js"]
+        },
+        {
             "matches": ["https://www.neopets.com/space/gormball*"],
             "js": ["js/gormball.js"]
         },
         {
-            "matches": ["https://www.neopets.com/shops/wizard*"],
-            "js": ["js/shopWizard.js"]
+            "matches": ["https://www.neopets.com/index.phtml"],
+            "js": ["js/homePage.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/login*"],
+            "js": ["js/loginPage.js"]
         },
         {
             "matches": ["https://www.neopets.com/market.phtml?*type=your*"],
@@ -30,20 +38,12 @@
             "js": ["js/npcShop.js"]
         },
         {
-            "matches": ["https://www.neopets.com/faerieland/employ/employment.phtml?type=jobs&voucher=basic*"],
-            "js": ["js/employmentAgency.js"]
+            "matches": ["https://www.neopets.com/shops/wizard*"],
+            "js": ["js/shopWizard.js"]
         },
         {
             "matches": ["https://www.neopets.com/browseshop.phtml?*"],
             "js": ["js/userShop.js"]
-        },
-        {
-            "matches": ["https://www.neopets.com/index.phtml"],
-            "js": ["js/homePage.js"]
-        },
-        {
-            "matches": ["https://www.neopets.com/login*"],
-            "js": ["js/loginPage.js"]
         }
     ],
     "background": {

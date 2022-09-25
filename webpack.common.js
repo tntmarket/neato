@@ -1,15 +1,22 @@
 const path = require("path");
+const fs = require("fs");
+
+const contentScripts = fs.readdirSync("./src/contentScripts").reduce(
+    (entries, contentScript) => ({
+        ...entries,
+        [path.parse(contentScript).name]: path.join(
+            __dirname,
+            `src/contentScripts/${contentScript}`,
+        ),
+    }),
+    {},
+);
+
+console.log(contentScripts);
 
 module.exports = {
     entry: {
-        homePage: path.join(__dirname, "src/homePage.ts"),
-        loginPage: path.join(__dirname, "src/loginPage.ts"),
-        userShop: path.join(__dirname, "src/userShop.ts"),
-        employmentAgency: path.join(__dirname, "src/employmentAgency.ts"),
-        gormball: path.join(__dirname, "src/gormball.ts"),
-        myShopStock: path.join(__dirname, "src/myShopStock.ts"),
-        npcShop: path.join(__dirname, "src/npcShop.ts"),
-        shopWizard: path.join(__dirname, "src/shopWizard.ts"),
+        ...contentScripts,
         backgroundPage: path.join(__dirname, "src/backgroundPage.ts"),
         popup: path.join(__dirname, "src/popup/index.tsx"),
     },
@@ -27,11 +34,7 @@ module.exports = {
             // Treat src/css/app.css as a global stylesheet
             {
                 test: /\app.css$/,
-                use: [
-                    "style-loader",
-                    "css-loader",
-                    "postcss-loader",
-                ],
+                use: ["style-loader", "css-loader", "postcss-loader"],
             },
             // Load .module.css files as CSS modules
             {
