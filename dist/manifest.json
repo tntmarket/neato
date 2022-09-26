@@ -22,6 +22,10 @@
             "js": ["js/gormball.js"]
         },
         {
+            "matches": ["https://www.neopets.com/haggle.phtml*"],
+            "js": ["js/haggle.js"]
+        },
+        {
             "matches": ["https://www.neopets.com/index.phtml"],
             "js": ["js/homePage.js"]
         },

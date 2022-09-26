@@ -1,3 +1,7 @@
+export function normalDelay(ms: number) {
+    return sleep(randomPercentRange(ms, 0.8));
+}
+
 export function sleep(ms: number) {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
