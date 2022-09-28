@@ -42,6 +42,10 @@
             "js": ["js/npcShop.js"]
         },
         {
+            "matches": ["https://www.neopets.com/quickstock.phtml*"],
+            "js": ["js/quickStock.js"]
+        },
+        {
             "matches": ["https://www.neopets.com/shops/wizard*"],
             "js": ["js/shopWizard.js"]
         },
