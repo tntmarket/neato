@@ -1,11 +1,13 @@
 import {
-    overlayButtonToCommitItemsForPricing, pushNextItemToPrice,
+    overlayButtonToCommitItemsForPricing,
+    pushNextItemToPrice,
     stageItemForPricing,
 } from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
 import { $, $All } from "@src/util/domHelpers";
 import { db, Listing } from "@src/database/listings";
 import { getJsonSetting } from "@src/util/localStorage";
+import { daysAgo } from "@src/util/dateTime";
 
 function stockedItemFromRow(row: HTMLElement) {
     const priceInput =
@@ -19,10 +21,6 @@ function stockedItemFromRow(row: HTMLElement) {
         name: row.innerText.split("\t")[0],
         price: parseInt(priceInput.value),
     };
-}
-
-function daysAgo(epochMillis: number) {
-    return Math.round((Date.now() - epochMillis) / (1000 * 60 * 60 * 24));
 }
 
 function underCut(marketPrice: number) {
