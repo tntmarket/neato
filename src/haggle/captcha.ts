@@ -44,9 +44,9 @@ export function getDarkestPixel(
                     context.putImageData(
                         new ImageData(
                             new Uint8ClampedArray([
-                                lightness,
-                                lightness,
-                                lightness,
+                                Math.round(lightness / 2),
+                                Math.round(lightness / 2),
+                                Math.round(lightness / 2),
                                 255,
                             ]),
                             1,
@@ -63,13 +63,22 @@ export function getDarkestPixel(
                 }
             }
 
+            // console.log(
+            //     lightnessHistogram
+            //         .map((pixels, value) =>
+            //             ".".repeat(Math.ceil(pixels.length / 10)),
+            //         )
+            //         .join("\n"),
+            // );
+
             const darkestPixels: Coordinate[] = [];
             for (let lightness = 0; lightness < 256; lightness += 1) {
-                lightnessHistogram[lightness].forEach((pixel) => {
+                const pixels = lightnessHistogram[lightness];
+                pixels.forEach((pixel) => {
                     darkestPixels.push(pixel);
                     context.putImageData(
                         new ImageData(
-                            new Uint8ClampedArray([255, 0, 0, 255]),
+                            new Uint8ClampedArray([0, 255, 255, 255]),
                             1,
                             1,
                         ),
@@ -77,20 +86,52 @@ export function getDarkestPixel(
                         pixel.y,
                     );
                 });
-                if (darkestPixels.length > 100) {
+                if (darkestPixels.length > 250) {
                     break;
                 }
             }
 
+            const averageX = avg(darkestPixels.map((pixel) => pixel.x));
+            const deviationX = deviation(
+                darkestPixels.map((pixel) => pixel.x),
+                averageX,
+            );
+            const averageY = avg(darkestPixels.map((pixel) => pixel.y));
+            const deviationY = deviation(
+                darkestPixels.map((pixel) => pixel.y),
+                averageY,
+            );
+
+            const darkestPixelsDiscardOutliers = darkestPixels.filter(
+                (pixel) => {
+                    const isOutlier =
+                        Math.abs(pixel.x - averageX) > deviationX ||
+                        Math.abs(pixel.y - averageY) > deviationY;
+
+                    if (isOutlier) {
+                        console.log(`discarding ${pixel.x}, ${pixel.y}`);
+                        context.putImageData(
+                            new ImageData(
+                                new Uint8ClampedArray([255, 0, 0, 255]),
+                                1,
+                                1,
+                            ),
+                            pixel.x,
+                            pixel.y,
+                        );
+                    }
+
+                    return !isOutlier;
+                },
+            );
+
             resolve({
                 x: randomPlusMinus(
-                    sum(darkestPixels.map((pixel) => pixel.x)) /
-                        darkestPixels.length,
+                    avg(darkestPixelsDiscardOutliers.map((pixel) => pixel.x)),
                     4,
                 ),
                 y: randomPlusMinus(
-                    sum(darkestPixels.map((pixel) => pixel.y)) /
-                        darkestPixels.length,
+                    avg(darkestPixelsDiscardOutliers.map((pixel) => pixel.y)),
                     7,
                 ),
             });
@@ -98,6 +139,14 @@ export function getDarkestPixel(
     });
 }
 
+function avg(xs: number[]): number {
+    return sum(xs) / xs.length;
+}
+
 function sum(xs: number[]): number {
     return xs.reduce((sum, x) => sum + x, 0);
+}
+
+function deviation(xs: number[], average: number): number {
+    return Math.sqrt(sum(xs.map((x) => Math.pow(x - average, 2))) / xs.length);
 }
