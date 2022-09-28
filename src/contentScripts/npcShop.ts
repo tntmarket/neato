@@ -4,7 +4,7 @@ import {
 } from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
 import { $All } from "@src/util/domHelpers";
-import { db } from "@src/database/listings";
+import { db, NpcStockData } from "@src/database/listings";
 
 function makeTypable(price: number) {
     return Math.round(price);
@@ -23,10 +23,25 @@ function getInfoContainer(item: HTMLElement): HTMLElement {
     return container;
 }
 
+function shopItemToStockData(item: HTMLElement): NpcStockData {
+    return {
+        itemName: assume(item.querySelector<HTMLElement>(".item-name"))
+            .innerText,
+        price: parseInt(
+            item
+                .querySelectorAll<HTMLInputElement>(".item-stock")[1]
+                .innerText.split("Cost: ")[1]
+                .replaceAll(",", ""),
+        ),
+        // quantity: parseInt(
+        //     assume(item.querySelectorAll<HTMLElement>(".item-stock")[0])
+        //         .innerText,
+        // ),
+    };
+}
+
 async function annotateShopItem(item: HTMLElement) {
-    const name = assume(
-        item.querySelector<HTMLElement>(".item-name"),
-    ).innerText;
+    const { itemName: name, price } = shopItemToStockData(item);
 
     const listings = await db.getListings(name);
 
@@ -40,15 +55,6 @@ async function annotateShopItem(item: HTMLElement) {
         return;
     }
 
-    const quantity = parseInt(
-        assume(item.querySelectorAll<HTMLElement>(".item-stock")[0]).innerText,
-    );
-    const price = parseInt(
-        item
-            .querySelectorAll<HTMLInputElement>(".item-stock")[1]
-            .innerText.split("Cost: ")[1]
-            .replaceAll(",", ""),
-    );
     const marketPrice = listings[0].price;
 
     const hagglePrice = price * 0.75;
@@ -82,12 +88,9 @@ async function annotateShopItem(item: HTMLElement) {
     `);
     extraInfo.append(hagglePointsLabel);
 
-    if (profit > 10000 && profitRatio > 0.3) {
+    if (profit > 10000 && profitRatio > 0.4) {
         item.style.backgroundColor = "lightcoral";
-    } else if (
-        (haggleProfit > 2000 && haggleProfitRatio > 0.6) ||
-        (profit > 1000 && profitRatio > 2.0)
-    ) {
+    } else if (haggleProfit > 2000 && haggleProfitRatio > 0.6) {
         item.style.backgroundColor = "lightblue";
     } else if (haggleProfit < 1000 || haggleProfitRatio < 0.2) {
         item.style.opacity = "0.1";
@@ -98,5 +101,16 @@ async function addProfitInfo() {
     await Promise.all($All(".shop-item").map(annotateShopItem));
 }
 
-addProfitInfo().then(overlayButtonToCommitItemsForPricing);
+async function initiallyAnotateItems() {
+    const npcStocks = $All(".shop-item").map(shopItemToStockData);
+    const shopId = parseInt(
+        assume(new URLSearchParams(location.search).get("obj_type")),
+    );
+    await db.addNpcStocks(shopId, npcStocks);
+
+    await addProfitInfo();
+    overlayButtonToCommitItemsForPricing();
+}
+
+initiallyAnotateItems();
 setInterval(addProfitInfo, 5000);

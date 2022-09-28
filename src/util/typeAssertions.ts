@@ -1,5 +1,5 @@
 export function assume<T>(
-    x: T | null,
+    x: T | null | undefined,
     errorMessage = "Unexpected null value",
 ): T {
     if (!x) {

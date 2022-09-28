@@ -1,5 +1,6 @@
 import Dexie from "dexie";
 import { getOtherCharsInSection } from "@src/database/shopWizardSection";
+import { assume } from "@src/util/typeAssertions";
 
 export type Listing = ListingData & {
     itemName: string;
@@ -13,19 +14,60 @@ export type ListingData = {
     userName: string;
 };
 
+export type NpcStock = NpcStockData & {
+    shopId: number;
+    lastSeen: number;
+};
+
+export type NpcStockData = {
+    itemName: string;
+    price: number;
+};
+
 type User = {
     userName: string;
 };
 
 class Database extends Dexie {
     listings!: Dexie.Table<Listing>;
+    npcStock!: Dexie.Table<NpcStock>;
     frozenUsers!: Dexie.Table<User>;
 
     constructor() {
         super("NeatoDatabase");
-        this.version(3).stores({
+        this.version(4).stores({
             listings: "[itemName+userName],price,lastSeen,link",
+            npcStock: "itemName,price,shopId,lastSeen",
             frozenUsers: "userName",
+        });
+    }
+
+    async addNpcStocks(shopId: number, stocks: NpcStockData[]): Promise<void> {
+        if (stocks.length === 0) {
+            return;
+        }
+        await db.transaction("rw", db.npcStock, async () => {
+            // clear previous stock
+            await db.npcStock.where({ shopId }).delete();
+
+            await db.npcStock.bulkPut(
+                stocks.map((stock) => ({
+                    ...stock,
+                    shopId,
+                    lastSeen: Date.now(),
+                })),
+            );
+        });
+    }
+
+    getNpcStockPrice(itemName: string): Promise<number> {
+        return db.transaction("r", db.npcStock, async () => {
+            const stock = await db.npcStock
+                .where({
+                    itemName,
+                })
+                .first();
+            return assume(stock).price;
         });
     }
 
@@ -110,6 +152,14 @@ class Database extends Dexie {
                 .filter(({ userName }) => !frozenUserNames.includes(userName))
                 .sortBy("price");
         });
+    }
+
+    async getMarketPrice(itemName: string): Promise<number> {
+        const listings = await db.getListings(itemName);
+        if (listings.length === 0) {
+            return 0;
+        }
+        return listings[0].price;
     }
 }
 
