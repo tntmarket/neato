@@ -6,10 +6,6 @@ import { assume } from "@src/util/typeAssertions";
 import { $All } from "@src/util/domHelpers";
 import { db, NpcStockData } from "@src/database/listings";
 
-function makeTypable(price: number) {
-    return Math.round(price);
-}
-
 function getInfoContainer(item: HTMLElement): HTMLElement {
     let container = item.querySelector<HTMLElement>(".neato-info");
     if (container) {
@@ -64,11 +60,11 @@ async function annotateShopItem(item: HTMLElement) {
     const profit = marketPrice - price;
     const profitRatio = profit / price;
 
-    const profitLabel = document.createElement("p");
-    profitLabel.className = "item-stock";
-    profitLabel.style.color = profit > 0 ? "darkgreen" : "darkred";
-    profitLabel.append(`${profit} / ${Math.round(profitRatio * 100)}%`);
-    extraInfo.append(profitLabel);
+    // const profitLabel = document.createElement("p");
+    // profitLabel.className = "item-stock";
+    // profitLabel.style.color = profit > 0 ? "darkgreen" : "darkred";
+    // profitLabel.append(`${profit} / ${Math.round(profitRatio * 100)}%`);
+    // extraInfo.append(profitLabel);
 
     const haggleLabel = document.createElement("p");
     haggleLabel.className = "item-stock";
@@ -78,15 +74,10 @@ async function annotateShopItem(item: HTMLElement) {
     );
     extraInfo.append(haggleLabel);
 
-    const hagglePointsLabel = document.createElement("p");
-    hagglePointsLabel.className = "item-stock";
-    hagglePointsLabel.append(`
-        ${makeTypable(price * 0.33)},
-        ${makeTypable(price * 0.5)},
-        ${makeTypable(price * 0.66)},
-        ${makeTypable(price * 0.75)},
-    `);
-    extraInfo.append(hagglePointsLabel);
+    const haggleBuySellLabel = document.createElement("p");
+    haggleBuySellLabel.className = "item-stock";
+    haggleBuySellLabel.append(`${Math.round(price * 0.75)} → ${marketPrice}`);
+    extraInfo.append(haggleBuySellLabel);
 
     if (profit > 10000 && profitRatio > 0.4) {
         item.style.backgroundColor = "lightcoral";
