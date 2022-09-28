@@ -47,6 +47,16 @@ export async function switchToUnbannedAccount() {
         }
     }
     console.log("No unbanned accounts available: ", accounts.get());
+    accounts.get().forEach((account, accountNumber) => {
+        const loginLink = document.createElement("a");
+        loginLink.append(account.userName);
+        loginLink.style.display = "block";
+        loginLink.href = "javascript:void(0)";
+        loginLink.onclick = () => {
+            switchAccount(accountNumber);
+        };
+        assume($(".container")).append(loginLink);
+    });
     await waitTillNextHour();
     switchToUnbannedAccount();
 }
