@@ -1,7 +1,11 @@
-import { pushNextItemToPrice } from "@src/pricingQueue";
+import {
+    overlayButtonToCommitItemsForPricing, pushNextItemToPrice,
+    stageItemForPricing,
+} from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
-import {$, $All} from "@src/util/domHelpers";
+import { $, $All } from "@src/util/domHelpers";
 import { db, Listing } from "@src/database/listings";
+import { getJsonSetting } from "@src/util/localStorage";
 
 function stockedItemFromRow(row: HTMLElement) {
     const priceInput =
@@ -49,59 +53,67 @@ function lowestPriceIsSelf(listings: Listing[]) {
     return listings[0].userName === getCurrentUser();
 }
 
-function priceStockItems(priceFreshnessInDays = 7) {
-    $All('form[action="process_market.phtml"] tr').forEach(async (row) => {
-        const item = stockedItemFromRow(row);
-        if (!item) {
-            return;
+const maxPriceStalenessInDays = getJsonSetting("maxPriceStalenessInDays", 1);
+
+async function adjustPriceOfStockItem(row: HTMLElement) {
+    const item = stockedItemFromRow(row);
+    if (!item) {
+        return;
+    }
+
+    const listings = await db.getListings(item.name);
+
+    if (listings.length === 0) {
+        pushNextItemToPrice(item.name);
+        console.log(`${item.name} is not priced yet, submitting...`);
+        return;
+    }
+
+    const marketPriceEntry = getMarketPriceEntry(listings);
+    if (daysAgo(marketPriceEntry.lastSeen) > maxPriceStalenessInDays.get()) {
+        if (getMarketPrice(listings) > 500) {
+            stageItemForPricing(item.name);
+            console.log(
+                `${item.name} is ${daysAgo(
+                    marketPriceEntry.lastSeen,
+                )} days stale, submitting...`,
+            );
+        } else {
+            console.log(
+                `${item.name} is already cheap, not worth checking the price again`,
+            );
         }
+    }
 
-        const listings = await db.getListings(item.name);
+    const priceInput = assume(
+        row.querySelector<HTMLInputElement>('input[type="text"]'),
+    );
 
-        if (listings.length === 0) {
-            pushNextItemToPrice(item.name);
-            console.log(`${item.name} is not priced yet, submitting...`);
-            return;
-        }
+    const underCutPrice = underCut(getMarketPrice(listings));
+    const currentPrice = parseInt(priceInput.value);
 
-        const marketPriceEntry = getMarketPriceEntry(listings);
-        if (daysAgo(marketPriceEntry.lastSeen) > priceFreshnessInDays) {
-            if (getMarketPrice(listings) > 500) {
-                pushNextItemToPrice(item.name);
-                console.log(
-                    `${item.name} is ${daysAgo(
-                        marketPriceEntry.lastSeen,
-                    )} days stale, submitting...`,
-                );
-            } else {
-                console.log(
-                    `${item.name} is already cheap, not worth checking the price again`,
-                );
-            }
-        }
-
-        const priceInput = assume(
-            row.querySelector<HTMLInputElement>('input[type="text"]'),
-        );
-
-        const underCutPrice = underCut(getMarketPrice(listings));
-        const currentPrice = parseInt(priceInput.value);
-
-        if (lowestPriceIsSelf(listings)) {
-            console.log(`The cheapest price for ${item.name} is us already`);
-            assume(priceInput.parentNode).append(" " + currentPrice.toString());
-            return;
-        }
-        if (currentPrice !== 0 && currentPrice <= underCutPrice) {
-            console.log(`${item.name} already beats market price`);
-            return;
-        }
-
-        // Show the original price before discounting
-        console.log(`${item.name}: undercutting ${marketPriceEntry.link}`);
+    if (lowestPriceIsSelf(listings)) {
+        console.log(`The cheapest price for ${item.name} is us already`);
         assume(priceInput.parentNode).append(" " + currentPrice.toString());
-        priceInput.value = underCutPrice.toString();
-    });
+        return;
+    }
+    if (currentPrice !== 0 && currentPrice <= underCutPrice) {
+        console.log(`${item.name} already beats market price`);
+        return;
+    }
+
+    // Show the original price before discounting
+    console.log(`${item.name}: undercutting ${marketPriceEntry.link}`);
+    assume(priceInput.parentNode).append(" " + currentPrice.toString());
+    priceInput.value = underCutPrice.toString();
 }
 
-priceStockItems();
+async function priceStockItems() {
+    await Promise.all(
+        $All('form[action="process_market.phtml"] tr').map(
+            adjustPriceOfStockItem,
+        ),
+    );
+}
+
+priceStockItems().then(overlayButtonToCommitItemsForPricing);
