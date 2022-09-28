@@ -19,12 +19,15 @@ function clickCoordinate(x: number, y: number) {
 }
 
 async function submitOffer(offer: number) {
+    assume($<HTMLInputElement>('input[name="current_offer"]')).value =
+        offer.toString();
+
     document.body.style.overflow = "hidden";
     const image = assume($<HTMLImageElement>('input[type="image"]'));
 
     const [{ x, y }] = await Promise.all([
         getDarkestPixel(image),
-        normalDelay(987),
+        normalDelay(333),
     ]);
 
     const captchaCoordinates = image.getBoundingClientRect();
@@ -34,16 +37,13 @@ async function submitOffer(offer: number) {
     const pointer = document.createElement("div");
     pointer.style.position = "absolute";
     pointer.style.zIndex = "999999";
-    pointer.style.background = "red";
-    pointer.style.width = `4px`;
-    pointer.style.height = `4px`;
+    pointer.style.background = "darkgreen";
+    pointer.style.width = `6px`;
+    pointer.style.height = `6px`;
     pointer.style.left = `${clickX + 1}px`;
     pointer.style.top = `${clickY + 1}px`;
     pointer.style.pointerEvents = "none";
     document.body.append(pointer);
-
-    assume($<HTMLInputElement>('input[name="current_offer"]')).value =
-        offer.toString();
 
     clickCoordinate(clickX, clickY);
 }
@@ -55,7 +55,7 @@ function extractNumber(element: HTMLElement): number {
 function makeHumanTypable(amount: number) {
     const tail = amount % 1000;
     const head = amount - tail;
-    const repeatedTail = 111 * Math.round(tail / 111);
+    const repeatedTail = 111 * Math.floor(tail / 111);
     return head + repeatedTail;
 }
 
@@ -93,7 +93,7 @@ async function getNextOffer() {
 
     // With small prices, the rounding might put us back at the same amount
     if (nextOffer <= currentAsk) {
-        return makeHumanTypable(nextOffer + 100);
+        return makeHumanTypable(nextOffer + 111);
     }
     return nextOffer;
 }
@@ -101,11 +101,11 @@ async function getNextOffer() {
 async function makeOffer() {
     if ($(".container")?.innerText.includes("I accept your offer")) {
         await sleep(5000);
-        await normalDelay(222);
+        await normalDelay(555);
+        assume($(".icon-back__2020")).click();
         return;
     }
     const nextOffer = await getNextOffer();
-    await normalDelay(555);
     submitOffer(nextOffer);
 }
 

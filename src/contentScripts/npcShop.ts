@@ -106,9 +106,8 @@ async function initiallyAnotateItems() {
     const shopId = parseInt(
         assume(new URLSearchParams(location.search).get("obj_type")),
     );
-    await db.addNpcStocks(shopId, npcStocks);
 
-    await addProfitInfo();
+    await Promise.all([db.addNpcStocks(shopId, npcStocks), addProfitInfo()]);
     overlayButtonToCommitItemsForPricing();
 }
 

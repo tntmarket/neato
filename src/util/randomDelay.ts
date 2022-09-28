@@ -27,3 +27,7 @@ export function randomNormal(min: number, max: number) {
 export function randomPercentRange(x: number, percentRange = 0.8) {
     return randomNormal(x * (1 - percentRange), x * (1 + percentRange));
 }
+
+export function randomPlusMinus(x: number, plusMinus: number) {
+    return randomNormal(x - plusMinus, x + plusMinus);
+}
