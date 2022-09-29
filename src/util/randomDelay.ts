@@ -28,6 +28,10 @@ export function randomPercentRange(x: number, percentRange = 0.8) {
     return randomNormal(x * (1 - percentRange), x * (1 + percentRange));
 }
 
+export function randomUniformBetween(a: number, b: number) {
+    return a + (b - a) * Math.random();
+}
+
 export function randomPlusMinus(x: number, plusMinus: number) {
     return randomNormal(x - plusMinus, x + plusMinus);
 }

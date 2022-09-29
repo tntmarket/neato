@@ -1,4 +1,3 @@
-
 {
     "manifest_version": 3,
     "name": "Neato",
@@ -14,7 +13,9 @@
     },
     "content_scripts": [
         {
-            "matches": ["https://www.neopets.com/faerieland/employ/employment.phtml?type=jobs&voucher=basic*"],
+            "matches": [
+                "https://www.neopets.com/faerieland/employ/employment.phtml?type=jobs&voucher=basic*"
+            ],
             "js": ["js/employmentAgency.js"]
         },
         {
@@ -52,6 +53,10 @@
         {
             "matches": ["https://www.neopets.com/browseshop.phtml?*"],
             "js": ["js/userShop.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/*"],
+            "js": ["js/dailies.js"]
         }
     ],
     "background": {
@@ -62,7 +67,6 @@
         "48": "icon-48.png",
         "128": "icon-128.png"
     },
-    "host_permissions": ["https:\/\/*/*"],
+    "host_permissions": ["https://*/*"],
     "permissions": ["tabs", "activeTab", "notifications", "scripting"]
 }
-
