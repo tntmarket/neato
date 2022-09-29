@@ -7,7 +7,7 @@ import {
 } from "@src/pricingQueue";
 import { db, ListingData } from "@src/database/listings";
 import { getSetting } from "@src/util/localStorage";
-import { submitItemsMissingFromDBToPrice } from "@src/submitItemsMissingFromDBToPrice";
+import { submitMissingOrStaleItemsToPrice } from "@src/submitMissingOrStaleItemsToPrice";
 import { switchToUnbannedAccount } from "@src/accounts";
 
 function priceFromRow(row: HTMLElement): ListingData {
@@ -23,10 +23,16 @@ function priceFromRow(row: HTMLElement): ListingData {
 
 const REFRESH_DELAY = 537;
 
+async function logListings(itemName: string) {
+    console.log(
+        JSON.stringify((await db.getListings(itemName)).slice(0, 5), null, 2),
+    );
+}
+
 function checkPrice(
     itemName = "One Dubloon Coin",
-    numberOfUniquePagesToCheck = 5,
-    maxNumberOfRequests = 8,
+    numberOfUniquePagesToCheck = 6,
+    maxNumberOfRequests = 10,
 ) {
     console.log("Checking price for ", itemName);
     let requestNumber = 0;
@@ -35,7 +41,7 @@ function checkPrice(
 
     async function refreshPrices() {
         requestNumber += 1;
-        console.log("Checking prices", requestNumber);
+        console.log("Checking prices", requestNumber, uniquePages);
         await sleep(randomPercentRange(REFRESH_DELAY, 0.8));
         const resubmitButton = assume(
             document.querySelector<HTMLElement>("#resubmitWizard"),
@@ -63,7 +69,6 @@ function checkPrice(
         const newPricesWereFound = Object.keys(prices).length > numberOfPrices;
         if (newPricesWereFound) {
             uniquePages += 1;
-            console.log("New page of prices found", uniquePages);
         }
     }
 
@@ -97,15 +102,20 @@ function checkPrice(
             uniquePages >= numberOfUniquePagesToCheck ||
             itemIsWorthless
         ) {
+            if (uniquePages === 0) {
+                // The item is possibly unbuyable
+                await db.upsertListingsSection(itemName, [
+                    {
+                        userName: "NOT_A_REAL_USER!",
+                        link: "NOT_A_REAL_LINK!",
+                        quantity: 1,
+                        price: 1000000,
+                    },
+                ]);
+            }
             observer.disconnect();
 
-            console.log(
-                JSON.stringify(
-                    (await db.getListings(itemName)).slice(0, 6),
-                    null,
-                    2,
-                ),
-            );
+            logListings(itemName);
 
             await sleep(randomPercentRange(delay.get(), 0.8));
             document
@@ -203,8 +213,10 @@ function refreshHUD() {
         // don't use Enter, because the main page detects and reacts to it
         if (event.key === "v" && event.metaKey) {
             // wait for pasted content to show up
-            setTimeout(() => {
-                pushNextItemToPrice(enqueueItemInput.value);
+            setTimeout(async () => {
+                const itemName = enqueueItemInput.value.trim();
+                logListings(itemName);
+                pushNextItemToPrice(itemName);
                 overlay.remove();
                 refreshHUD();
             }, 100);
@@ -240,7 +252,7 @@ function refreshHUD() {
     const newItemsTextArea = document.createElement("textarea");
     newItemsTextArea.onchange = () => {
         const itemsToStartMonitoring = newItemsTextArea.value.split("\n");
-        submitItemsMissingFromDBToPrice(itemsToStartMonitoring);
+        submitMissingOrStaleItemsToPrice(itemsToStartMonitoring);
     };
     overlay.appendChild(newItemsTextArea);
 }
