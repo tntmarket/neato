@@ -86,30 +86,22 @@ export function getDarkestPixel(
                         pixel.y,
                     );
                 });
-                if (darkestPixels.length > 250) {
+                if (darkestPixels.length > 100) {
                     break;
                 }
             }
 
             const averageX = avg(darkestPixels.map((pixel) => pixel.x));
-            const deviationX = deviation(
-                darkestPixels.map((pixel) => pixel.x),
-                averageX,
-            );
             const averageY = avg(darkestPixels.map((pixel) => pixel.y));
-            const deviationY = deviation(
-                darkestPixels.map((pixel) => pixel.y),
-                averageY,
-            );
+            const deviation = getDeviation(darkestPixels, averageX, averageY);
 
             const darkestPixelsDiscardOutliers = darkestPixels.filter(
                 (pixel) => {
                     const isOutlier =
-                        Math.abs(pixel.x - averageX) > deviationX ||
-                        Math.abs(pixel.y - averageY) > deviationY;
+                        distance(pixel, { x: averageX, y: averageY }) >
+                        deviation;
 
                     if (isOutlier) {
-                        console.log(`discarding ${pixel.x}, ${pixel.y}`);
                         context.putImageData(
                             new ImageData(
                                 new Uint8ClampedArray([255, 0, 0, 255]),
@@ -147,6 +139,21 @@ function sum(xs: number[]): number {
     return xs.reduce((sum, x) => sum + x, 0);
 }
 
-function deviation(xs: number[], average: number): number {
-    return Math.sqrt(sum(xs.map((x) => Math.pow(x - average, 2))) / xs.length);
+function getDeviation(
+    pixels: Coordinate[],
+    averageX: number,
+    averageY: number,
+): number {
+    return Math.sqrt(
+        sum(
+            pixels.map(
+                ({ x, y }) =>
+                    Math.pow(x - averageX, 2) + Math.pow(y - averageY, 2),
+            ),
+        ) / pixels.length,
+    );
+}
+
+function distance(a: Coordinate, b: Coordinate): number {
+    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
