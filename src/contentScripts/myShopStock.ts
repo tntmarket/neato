@@ -87,16 +87,19 @@ async function adjustPriceOfStockItem(row: HTMLElement) {
         row.querySelector<HTMLInputElement>('input[type="text"]'),
     );
 
-    const underCutPrice = underCut(getMarketPrice(listings));
+    const marketPrice = getMarketPrice(listings);
+    const underCutPrice = underCut(marketPrice);
     const currentPrice = parseInt(priceInput.value);
 
     if (lowestPriceIsSelf(listings)) {
-        console.log(`The cheapest price for ${item.name} is us already`);
+        console.log(
+            `The cheapest price for ${item.name} is us already (${marketPrice})`,
+        );
         assume(priceInput.parentNode).append(" " + currentPrice.toString());
         return;
     }
     if (currentPrice !== 0 && currentPrice <= underCutPrice) {
-        console.log(`${item.name} already beats market price`);
+        console.log(`${item.name} already beats market price ${marketPrice}`);
         return;
     }
 
