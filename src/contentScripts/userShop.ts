@@ -16,13 +16,31 @@ function updateStaleListingsBasedOnUserShop() {
         db.trackUserWasFrozen(userName);
     }
 
+    const stillWishToBuy = $(
+        `a[href="${location.pathname.slice(1)}${
+            location.search
+        }&buy_obj_confirm=yes"]`,
+    );
+    if (stillWishToBuy) {
+        stillWishToBuy.click();
+        return;
+    }
+
     const shopItem = $('table[align="center"]');
     if (!shopItem) {
         return;
     }
     const quantity = parseInt(shopItem.innerText.split("\n")[2]);
-    console.log(quantity);
-    db.updateListingQuantity(location.href.replace("&lower=0", ""), quantity);
+    const price = parseInt(
+        shopItem.innerText.split("\n")[3].replace(/[^0-9]+/g, ""),
+    );
+    db.updateListing(
+        location.href
+            .replace("&lower=0", "")
+            .replace("&buy_obj_confirm=yes", ""),
+        quantity,
+        price,
+    );
 }
 
 updateStaleListingsBasedOnUserShop();

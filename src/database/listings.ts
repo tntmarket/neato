@@ -82,15 +82,12 @@ class Database extends Dexie {
         lastSeen: number,
         listings: ListingData[],
     ): Promise<void> {
-        console.log("BLAH");
-        await db.transaction("rw", db.listings, () =>
-            db.listings.bulkPut(
-                listings.map((listing) => ({
-                    itemName,
-                    lastSeen,
-                    ...listing,
-                })),
-            ),
+        return db.listings.bulkPut(
+            listings.map((listing) => ({
+                itemName,
+                lastSeen,
+                ...listing,
+            })),
         );
     }
 
@@ -103,7 +100,6 @@ class Database extends Dexie {
             return;
         }
 
-        const now = Date.now();
         await db.transaction("rw", db.listings, async () => {
             const otherCharsInSection = getOtherCharsInSection(
                 listings[0].userName,
@@ -120,19 +116,19 @@ class Database extends Dexie {
 
             await previousListingsInSection.delete();
 
-            db.listings.bulkAdd(
-                listings.map((listing) => ({
-                    itemName,
-                    lastSeen: now,
-                    ...listing,
-                })),
-            );
+            await db.addListings(itemName, Date.now(), listings);
         });
     }
 
-    updateListingQuantity(link: string, quantity: number): Promise<void> {
+    updateListing(
+        link: string,
+        quantity: number,
+        price: number,
+    ): Promise<void> {
         return db.transaction("rw", db.listings, async () => {
-            await db.listings.where({ link }).modify({ quantity });
+            await db.listings
+                .where({ link })
+                .modify({ quantity, price, lastSeen: Date.now() });
         });
     }
 
