@@ -52,7 +52,8 @@ async function annotateShopItem(item: HTMLElement) {
         return;
     }
 
-    if (daysAgo(listings[0].lastSeen) > 7) {
+    if (daysAgo(listings[0].lastSeen) > 3) {
+        extraInfo.style.background = "lightgray";
         extraInfo.style.opacity = "0.5";
         stageItemForPricing(name);
     }
