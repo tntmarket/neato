@@ -99,7 +99,8 @@ async function getNextOffer() {
 }
 
 async function makeOffer() {
-    if ($(".container")?.innerText.includes("I accept your offer")) {
+    const text = assume($(".container")?.innerText);
+    if (text.includes("I accept your offer") || text.includes("SOLD OUT")) {
         await sleep(5000);
         await normalDelay(555);
         assume($(".icon-back__2020")).click();
