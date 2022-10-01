@@ -1,4 +1,4 @@
-import { $, $All } from "@src/util/domHelpers";
+import { $, $All, waitReady } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import {
     normalDelay,
@@ -55,7 +55,19 @@ async function fruitMachine() {
     assume(getInput("Spin, spin, spin!")).click();
 }
 
-async function graveDanger() {}
+async function graveDanger() {
+    const againButton = $('input[name="again"]')
+        ?.closest("form")
+        ?.querySelector<HTMLButtonElement>("button");
+
+    if (againButton) {
+        againButton.click();
+    } else {
+        $All("#gdSelection button")[1].click();
+        await normalDelay(1111);
+        $All(".popup-grid2__2020 button")[1].click();
+    }
+}
 
 async function desertedTomb() {
     getInput("Open the door...")?.click();
@@ -122,7 +134,11 @@ async function stockMarket() {
     }
 }
 
-async function guessTheWeightOfTheMarrow() {}
+async function guessTheWeightOfTheMarrow() {
+    const weightInput = assume($<HTMLInputElement>('input[name="guess"]'));
+    weightInput.value = Math.round(randomUniformBetween(200, 800)).toString();
+    getInput("Guess!")?.click();
+}
 
 async function turmaculus() {
     selectOption("#wakeup", "4");
@@ -166,14 +182,6 @@ async function wheelOfKnowledge() {
     assume($("#wheelButtonSpin")).click();
 }
 
-async function wheelOfMediocrity() {
-    assume($("#wheelButtonSpin")).click();
-}
-
-async function wheelOfExcitement() {
-    assume($("#wheelButtonSpin")).click();
-}
-
 async function winterKiosk() {
     getInput("Yes, I will have one please")?.click();
 }
@@ -200,17 +208,11 @@ const linkToRoutine = {
     "/medieval/wiseking.phtml": wiseKing,
     "/medieval/knowledge.phtml": wheelOfKnowledge,
     "/winter/kiosk.phtml": winterKiosk,
-    "/prehistoric/mediocrity.phtml": wheelOfMediocrity,
-    "/faerieland/wheel.phtml": wheelOfExcitement,
 };
 
 Object.entries(linkToRoutine).forEach(async ([link, routine]) => {
     if (location.href.includes(link)) {
-        if (document.readyState !== "complete") {
-            await new Promise((resolve) =>
-                window.addEventListener("load", resolve),
-            );
-        }
+        await waitReady();
 
         const delay = randomUniformBetween(1111, 11111);
         console.log("COMPLETE, waiting... ", Math.round(delay * 100) / 100);
@@ -221,6 +223,8 @@ Object.entries(linkToRoutine).forEach(async ([link, routine]) => {
 });
 
 async function potatoCounter() {
+    await waitReady();
+
     const playAgain = getInput("Play Again");
     if (playAgain) {
         await normalDelay(444);
@@ -244,6 +248,26 @@ if (location.href.includes("/medieval/potatocounter.phtml")) {
     potatoCounter();
 }
 
+async function wheelOfMediocrity() {
+    await waitReady();
+    await normalDelay(1111);
+    assume($("#wheelButtonSpin")).click();
+}
+
+if (location.href.includes("/prehistoric/mediocrity.phtml")) {
+    wheelOfMediocrity();
+}
+
+async function wheelOfExcitement() {
+    await waitReady();
+    await normalDelay(1111);
+    assume($("#wheelButtonSpin")).click();
+}
+
+if (location.href.includes("/faerieland/wheel.phtml")) {
+    wheelOfExcitement();
+}
+
 async function academyTraining() {
     if (location.href.includes("process_academy.phtml")) {
         location.assign("/pirates/academy.phtml?type=courses");
@@ -257,7 +281,7 @@ async function academyTraining() {
             $<HTMLSelectElement>('select[name="course_type"]'),
         );
         courseType.value = "Endurance";
-        getInput("Start Course")?.click();
+        // getInput("Start Course")?.click();
     }
 }
 
