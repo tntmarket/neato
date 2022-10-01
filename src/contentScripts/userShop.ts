@@ -1,19 +1,27 @@
-import { $ } from "@src/util/domHelpers";
+import { $, domLoaded } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import { db } from "@src/database/listings";
+import { normalDelay } from "@src/util/randomDelay";
+import {
+    overlayUserShopsToVisit,
+    tryVisitNextUserShop,
+} from "@src/userShopQueue";
+import { extractNumber } from "@src/util/testParsing";
 
-function updateStaleListingsBasedOnUserShop() {
+async function updateStaleListingsBasedOnUserShop() {
+    await domLoaded();
+
     const pageText = assume($(".content")).innerText;
 
     if (pageText.includes("Item not found!")) {
-        db.clearListing(location.href);
+        return db.clearListing(location.href);
     }
 
     if (pageText.includes("The owner of this shop has been frozen!")) {
         const userName: string = assume(
             new URLSearchParams(window.location.search).get("owner"),
         );
-        db.trackUserWasFrozen(userName);
+        return db.trackUserWasFrozen(userName);
     }
 
     const stillWishToBuy = $(
@@ -27,14 +35,15 @@ function updateStaleListingsBasedOnUserShop() {
     }
 
     const shopItem = $('table[align="center"]');
-    if (!shopItem) {
-        return;
+    // For some reason, we don't always get a "Item not found!" message
+    if (!shopItem || shopItem.innerText.trim() === "") {
+        return db.clearListing(location.href);
     }
-    const quantity = parseInt(shopItem.innerText.split("\n")[2]);
-    const price = parseInt(
-        shopItem.innerText.split("\n")[3].replace(/[^0-9]+/g, ""),
-    );
-    db.updateListing(
+
+    const shopItemParts = shopItem.innerText.split("\n");
+    const quantity = parseInt(shopItemParts[2]);
+    const price = extractNumber(shopItemParts[3]);
+    return db.updateListing(
         location.href
             .replace("&lower=0", "")
             .replace("&buy_obj_confirm=yes", ""),
@@ -43,4 +52,9 @@ function updateStaleListingsBasedOnUserShop() {
     );
 }
 
-updateStaleListingsBasedOnUserShop();
+overlayUserShopsToVisit();
+updateStaleListingsBasedOnUserShop().then(async () => {
+    await normalDelay(1111);
+    tryVisitNextUserShop();
+    setInterval(tryVisitNextUserShop, 10000);
+});

@@ -27,7 +27,7 @@ async function submitOffer(offer: number) {
 
     const [{ x, y }] = await Promise.all([
         getDarkestPixel(image),
-        normalDelay(333),
+        normalDelay(444),
     ]);
 
     const captchaCoordinates = image.getBoundingClientRect();
@@ -93,7 +93,7 @@ async function getNextOffer() {
 
     // With small prices, the rounding might put us back at the same amount
     if (nextOffer <= currentAsk) {
-        return makeHumanTypable(nextOffer + 111);
+        return makeHumanTypable(nextOffer + 150);
     }
     return nextOffer;
 }

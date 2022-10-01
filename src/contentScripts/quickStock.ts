@@ -12,7 +12,7 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
     }
 
     const marketPrice = await db.getMarketPrice(itemName);
-    if (marketPrice > 100) {
+    if (marketPrice >= 300 || marketPrice === 0) {
         stockButton.click();
     } else {
         const donateButton = assume(

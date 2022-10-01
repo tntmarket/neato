@@ -126,9 +126,15 @@ class Database extends Dexie {
         price: number,
     ): Promise<void> {
         return db.transaction("rw", db.listings, async () => {
-            await db.listings
-                .where({ link })
-                .modify({ quantity, price, lastSeen: Date.now() });
+            await db.listings.where({ link }).modify({
+                link: link.replace(
+                    /buy_cost_neopoints=[0-9]+/,
+                    `buy_cost_neopoints=${price}`,
+                ),
+                quantity,
+                price,
+                lastSeen: Date.now(),
+            });
         });
     }
 
@@ -138,16 +144,26 @@ class Database extends Dexie {
         });
     }
 
-    getListings(itemName: string): Promise<Listing[]> {
-        return db.transaction("r", db.listings, db.frozenUsers, async () => {
-            const frozenUsers = await db.frozenUsers.toArray();
-            const frozenUserNames = frozenUsers.map((user) => user.userName);
+    async getListings(itemName: string, limit = 2): Promise<Listing[]> {
+        const listings = await db.transaction(
+            "r",
+            db.listings,
+            db.frozenUsers,
+            async () => {
+                const frozenUsers = await db.frozenUsers.toArray();
+                const frozenUserNames = frozenUsers.map(
+                    (user) => user.userName,
+                );
 
-            return db.listings
-                .where({ itemName })
-                .filter(({ userName }) => !frozenUserNames.includes(userName))
-                .sortBy("price");
-        });
+                return db.listings
+                    .where({ itemName })
+                    .filter(
+                        ({ userName }) => !frozenUserNames.includes(userName),
+                    )
+                    .sortBy("price");
+            },
+        );
+        return listings.slice(0, limit);
     }
 
     async getMarketPrice(itemName: string): Promise<number> {

@@ -8,6 +8,7 @@ import { $, $All } from "@src/util/domHelpers";
 import { db, Listing } from "@src/database/listings";
 import { getJsonSetting } from "@src/util/localStorage";
 import { daysAgo } from "@src/util/dateTime";
+import { openLink } from "@src/util/navigationHelpers";
 
 function stockedItemFromRow(row: HTMLElement) {
     const priceInput =
@@ -27,11 +28,11 @@ function underCut(marketPrice: number) {
     return Math.max(marketPrice - (marketPrice % 100) - 1, 1);
 }
 
-function getMarketPrice(listings: Listing[]) {
-    return getMarketPriceEntry(listings).price;
+function getMarketPriceExcludingSelf(listings: Listing[]) {
+    return getMarketPriceEntryExcludingSelf(listings).price;
 }
 
-function getMarketPriceEntry(listings: Listing[]): Listing {
+function getMarketPriceEntryExcludingSelf(listings: Listing[]): Listing {
     if (lowestPriceIsSelf(listings)) {
         return listings[1];
     }
@@ -67,9 +68,9 @@ async function adjustPriceOfStockItem(row: HTMLElement) {
         return;
     }
 
-    const marketPriceEntry = getMarketPriceEntry(listings);
+    const marketPriceEntry = getMarketPriceEntryExcludingSelf(listings);
     if (daysAgo(marketPriceEntry.lastSeen) > maxPriceStalenessInDays.get()) {
-        if (getMarketPrice(listings) > 500) {
+        if (getMarketPriceExcludingSelf(listings) > 500) {
             stageItemForPricing(item.name);
             console.log(
                 `${item.name} is ${daysAgo(
@@ -87,24 +88,21 @@ async function adjustPriceOfStockItem(row: HTMLElement) {
         row.querySelector<HTMLInputElement>('input[type="text"]'),
     );
 
-    const marketPrice = getMarketPrice(listings);
+    const marketPrice = getMarketPriceExcludingSelf(listings);
     const underCutPrice = underCut(marketPrice);
     const currentPrice = parseInt(priceInput.value);
 
-    if (lowestPriceIsSelf(listings)) {
-        console.log(
-            `The cheapest price for ${item.name} is us already (${marketPrice})`,
-        );
-        assume(priceInput.parentNode).append(" " + currentPrice.toString());
-        return;
-    }
-    if (currentPrice !== 0 && currentPrice <= underCutPrice) {
+    if (currentPrice > 0 && currentPrice <= underCutPrice) {
         console.log(`${item.name} already beats market price ${marketPrice}`);
         return;
     }
 
     // Show the original price before discounting
     console.log(`${item.name}: undercutting ${marketPriceEntry.link}`);
+    const marketPriceLabel = document.createElement("a");
+    marketPriceLabel.onclick = () => {
+        openLink(marketPriceEntry.link);
+    };
     assume(priceInput.parentNode).append(" " + currentPrice.toString());
     priceInput.value = underCutPrice.toString();
 }

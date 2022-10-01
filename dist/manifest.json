@@ -13,6 +13,14 @@
     },
     "content_scripts": [
         {
+            "matches": ["https://www.neopets.com/*"],
+            "js": ["js/dailies.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/games/*dicearoo*"],
+            "js": ["js/dicearoo.js"]
+        },
+        {
             "matches": [
                 "https://www.neopets.com/faerieland/employ/employment.phtml?type=jobs&voucher=basic*"
             ],
@@ -55,8 +63,8 @@
             "js": ["js/userShop.js"]
         },
         {
-            "matches": ["https://www.neopets.com/*"],
-            "js": ["js/dailies.js"]
+            "matches": ["https://items.jellyneo.net/search/print/*"],
+            "js": ["js/jellyNeo.js"]
         }
     ],
     "background": {

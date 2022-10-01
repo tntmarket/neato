@@ -1,14 +1,19 @@
-import { randomPercentRange, sleep } from "@src/util/randomDelay";
+import { normalDelay, randomPercentRange, sleep } from "@src/util/randomDelay";
 import { assume } from "@src/util/typeAssertions";
 import {
     getItemsToPrice,
     popNextItemToPrice,
+    pushItemsToPrice,
     pushNextItemToPrice,
 } from "@src/pricingQueue";
 import { db, ListingData } from "@src/database/listings";
 import { getSetting } from "@src/util/localStorage";
 import { submitMissingOrStaleItemsToPrice } from "@src/submitMissingOrStaleItemsToPrice";
 import { switchToUnbannedAccount } from "@src/accounts";
+import { getNextItemsToReprice } from "@src/priceMonitoring";
+import { queueUserShopToVisit } from "@src/userShopQueue";
+import { waitReady } from "@src/util/domHelpers";
+import { ljs } from "@src/util/logging";
 
 function priceFromRow(row: HTMLElement): ListingData {
     const [userName, _, quantity, __, price] = row.innerText.split("\n");
@@ -24,9 +29,28 @@ function priceFromRow(row: HTMLElement): ListingData {
 const REFRESH_DELAY = 537;
 
 async function logListings(itemName: string) {
-    console.log(
-        JSON.stringify((await db.getListings(itemName)).slice(0, 5), null, 2),
-    );
+    ljs(await db.getListings(itemName, 5));
+}
+
+function hoursAgo(epochMillis: number) {
+    return (Date.now() - epochMillis) / (1000 * 60 * 60);
+}
+
+// If user X is the cheapest, and then their section is cleared out,
+// it now becomes impossible to find a listing page that would clobber
+// out their original result. We can manually visit their shop to clear
+// it instead
+async function clearAnyInvalidListingsInFront(itemName: string) {
+    const listings = await db.getListings(itemName, 6);
+    for (const listing of listings) {
+        // The next price is fresh, we can exit
+        if (hoursAgo(listing.lastSeen) < 1) {
+            return;
+        }
+        // It's old, we failed to find it's section. Check that it's
+        // still valid, to unclog potential invalid listings
+        queueUserShopToVisit(listing.link);
+    }
 }
 
 function checkPrice(
@@ -113,6 +137,10 @@ function checkPrice(
                     },
                 ]);
             }
+
+            // The item is possibly unbuyable
+            await clearAnyInvalidListingsInFront(itemName);
+
             observer.disconnect();
 
             logListings(itemName);
@@ -140,12 +168,22 @@ function checkPrice(
     assume(document.querySelector<HTMLElement>("#submit_wizard")).click();
 }
 
-function processQueueItem() {
+async function processQueueItem() {
+    await waitReady();
+    await normalDelay(1234);
+
     const itemName = popNextItemToPrice();
     if (!itemName) {
         console.log(
-            "No items in the pricing queue, go back to shop here: https://www.neopets.com/market.phtml?type=your&order_by=price",
+            "No items in the pricing queue, calculating the best items to re-price...",
         );
+        const itemsToReprice = await getNextItemsToReprice(100, 50);
+        pushItemsToPrice(itemsToReprice);
+        if (itemsToReprice.length === 0) {
+            // Wait an hour
+            await normalDelay(1000 * 60 * 60);
+        }
+        processQueueItem();
         return;
     }
 
@@ -251,7 +289,9 @@ function refreshHUD() {
 
     const newItemsTextArea = document.createElement("textarea");
     newItemsTextArea.onchange = () => {
-        const itemsToStartMonitoring = newItemsTextArea.value.split("\n");
+        const itemsToStartMonitoring = newItemsTextArea.value
+            .trim()
+            .split("\n");
         submitMissingOrStaleItemsToPrice(itemsToStartMonitoring);
     };
     overlay.appendChild(newItemsTextArea);
@@ -260,5 +300,5 @@ function refreshHUD() {
 refreshHUD();
 
 if (isAutoProcessingQueue.get()) {
-    setTimeout(processQueueItem, randomPercentRange(1234, 0.8));
+    processQueueItem();
 }
