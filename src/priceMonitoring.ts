@@ -1,6 +1,7 @@
-import { db, Listing } from "@src/database/listings";
+import { getListings, Listing } from "@src/database/listings";
 import { daysAgo } from "@src/util/dateTime";
-import { l, ljs } from "@src/util/logging";
+import { ljs } from "@src/util/logging";
+import { db } from "@src/database/databaseSchema";
 
 export async function getNextItemsToReprice(
     limit = 20,
@@ -22,7 +23,7 @@ export async function getNextItemsToReprice(
             if (typeof itemName !== "string") {
                 throw new Error(`${itemName.toString()} is not an item name`);
             }
-            const listings = await db.getListings(itemName, 100);
+            const listings = await getListings(itemName, 100);
 
             const estimatedDaysUntilPriceChange =
                 await estimateDaysToImpactfulPriceChange(listings);

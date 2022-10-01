@@ -1,10 +1,10 @@
 import { $All, domLoaded } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
-import { extractNumber } from "@src/util/testParsing";
-import { JellyNeoEntryData } from "@src/database/databaseSchema";
 import { l } from "@src/util/logging";
-import { callProcedure } from "@src/backgroundHandlers/requestHandler";
-import { addJellyNeoItems } from "@src/backgroundHandlers/jellyNeo";
+import { JellyNeoEntryData } from "@src/database/jellyNeo";
+import { callProcedure } from "@src/background/procedure";
+import { addJellyNeoItems } from "@src/background/jellyNeo";
+import { extractNumber } from "@src/util/textParsing";
 
 function rowToEntry(row: HTMLElement): JellyNeoEntryData {
     const itemLink = assume(row.querySelector("a"));

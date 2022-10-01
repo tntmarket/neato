@@ -1,6 +1,6 @@
 import { assume } from "@src/util/typeAssertions";
 import { $All } from "@src/util/domHelpers";
-import { db } from "@src/database/listings";
+import { getMarketPrice } from "@src/database/listings";
 
 $All('input[value="stock"]').forEach(async (stockButton) => {
     const itemName = assume(
@@ -11,7 +11,7 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
         return;
     }
 
-    const marketPrice = await db.getMarketPrice(itemName);
+    const marketPrice = await getMarketPrice(itemName);
     if (marketPrice >= 300 || marketPrice === 0) {
         stockButton.click();
     } else {

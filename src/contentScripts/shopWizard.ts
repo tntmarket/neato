@@ -6,9 +6,12 @@ import {
     pushItemsToPrice,
     pushNextItemToPrice,
 } from "@src/pricingQueue";
-import { db, ListingData } from "@src/database/listings";
+import {
+    getListings,
+    ListingData,
+    upsertListingsSection,
+} from "@src/database/listings";
 import { getSetting } from "@src/util/localStorage";
-import { submitMissingOrStaleItemsToPrice } from "@src/submitMissingOrStaleItemsToPrice";
 import { switchToUnbannedAccount } from "@src/accounts";
 import { getNextItemsToReprice } from "@src/priceMonitoring";
 import { queueUserShopToVisit } from "@src/userShopQueue";
@@ -29,7 +32,7 @@ function priceFromRow(row: HTMLElement): ListingData {
 const REFRESH_DELAY = 537;
 
 async function logListings(itemName: string) {
-    ljs(await db.getListings(itemName, 5));
+    ljs(await getListings(itemName, 5));
 }
 
 function hoursAgo(epochMillis: number) {
@@ -41,7 +44,7 @@ function hoursAgo(epochMillis: number) {
 // out their original result. We can manually visit their shop to clear
 // it instead
 async function clearAnyInvalidListingsInFront(itemName: string) {
-    const listings = await db.getListings(itemName, 6);
+    const listings = await getListings(itemName, 6);
     for (const listing of listings) {
         // The next price is fresh, we can exit
         if (hoursAgo(listing.lastSeen) < 1) {
@@ -88,7 +91,7 @@ function checkPrice(
                 listings.push(price);
             });
 
-        await db.upsertListingsSection(itemName, listings);
+        await upsertListingsSection(itemName, listings);
 
         const newPricesWereFound = Object.keys(prices).length > numberOfPrices;
         if (newPricesWereFound) {
@@ -128,7 +131,7 @@ function checkPrice(
         ) {
             if (uniquePages === 0) {
                 // The item is possibly unbuyable
-                await db.upsertListingsSection(itemName, [
+                await upsertListingsSection(itemName, [
                     {
                         userName: "NOT_A_REAL_USER!",
                         link: "NOT_A_REAL_LINK!",
@@ -199,6 +202,20 @@ const isAutoProcessingQueue = getSetting(
 const priceThreshold = getSetting("abortIfUnderPrice", 1000, parseInt);
 
 const delay = getSetting("shopWizardSearchDelay", 1000, parseInt);
+
+function submitMissingOrStaleItemsToPrice(itemNames: string[]) {
+    pushItemsToPrice([]);
+    return Promise.all(
+        itemNames.map(async (item) => {
+            const listings = await getListings(item);
+            if (listings.length === 0) {
+                console.log("Submit ", item);
+                pushNextItemToPrice(item);
+                return;
+            }
+        }),
+    );
+}
 
 function refreshHUD() {
     const overlay = document.createElement("div");

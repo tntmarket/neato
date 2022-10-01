@@ -1,4 +1,4 @@
-import { addJellyNeoItems } from "@src/backgroundHandlers/jellyNeo";
+import { addJellyNeoItems } from "@src/background/jellyNeo";
 
 const PROCEDURES = [addJellyNeoItems];
 

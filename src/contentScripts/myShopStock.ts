@@ -5,7 +5,7 @@ import {
 } from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
 import { $, $All } from "@src/util/domHelpers";
-import { db, Listing } from "@src/database/listings";
+import { getListings, Listing } from "@src/database/listings";
 import { getJsonSetting } from "@src/util/localStorage";
 import { daysAgo } from "@src/util/dateTime";
 import { openLink } from "@src/util/navigationHelpers";
@@ -60,7 +60,7 @@ async function adjustPriceOfStockItem(row: HTMLElement) {
         return;
     }
 
-    const listings = await db.getListings(item.name);
+    const listings = await getListings(item.name);
 
     if (listings.length === 0) {
         pushNextItemToPrice(item.name);

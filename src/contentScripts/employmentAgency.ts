@@ -3,7 +3,7 @@ import {
     overlayButtonToCommitItemsForPricing,
     stageItemForPricing,
 } from "@src/pricingQueue";
-import { db, Listing } from "@src/database/listings";
+import { getListings, Listing } from "@src/database/listings";
 import { openLink } from "@src/util/navigationHelpers";
 
 function getFulfillPlan(quantity: number, topPrices: Listing[]) {
@@ -40,7 +40,7 @@ async function annotateJobPosting(row: HTMLElement) {
         row.style.opacity = "0.15";
     }
 
-    const listings = await db.getListings(itemName, 8);
+    const listings = await getListings(itemName, 8);
     if (listings.length > 0) {
         const fulfillPlan = getFulfillPlan(quantity, listings);
 

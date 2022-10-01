@@ -2,7 +2,6 @@ import { assume } from "@src/util/typeAssertions";
 import { $ } from "@src/util/domHelpers";
 import { randomPercentRange } from "@src/util/randomDelay";
 
-
 function getInput(value: string): HTMLInputElement | null {
     return document.querySelector(`input[value="${value}"]`);
 }

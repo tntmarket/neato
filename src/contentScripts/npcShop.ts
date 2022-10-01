@@ -4,9 +4,10 @@ import {
 } from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
 import { $All } from "@src/util/domHelpers";
-import { db, NpcStockData } from "@src/database/listings";
+import { getListings } from "@src/database/listings";
 import { daysAgo } from "@src/util/dateTime";
 import { openLink } from "@src/util/navigationHelpers";
+import { addNpcStocks, NpcStockData } from "@src/database/npcStock";
 
 function getInfoContainer(item: HTMLElement): HTMLElement {
     let container = item.querySelector<HTMLElement>(".neato-info");
@@ -41,7 +42,7 @@ function shopItemToStockData(item: HTMLElement): NpcStockData {
 async function annotateShopItem(item: HTMLElement) {
     const { itemName: name, price } = shopItemToStockData(item);
 
-    const listings = await db.getListings(name);
+    const listings = await getListings(name);
 
     const extraInfo = getInfoContainer(item);
     item.style.backgroundColor = "";
@@ -113,7 +114,7 @@ async function initiallyAnotateItems() {
         assume(new URLSearchParams(location.search).get("obj_type")),
     );
 
-    await Promise.all([db.addNpcStocks(shopId, npcStocks), addProfitInfo()]);
+    await Promise.all([addNpcStocks(shopId, npcStocks), addProfitInfo()]);
     overlayButtonToCommitItemsForPricing();
 }
 

@@ -1,8 +1,9 @@
 import { $, $All } from "@src/util/domHelpers";
-import { getDarkestPixel } from "@src/haggle/captcha";
 import { assume } from "@src/util/typeAssertions";
 import { normalDelay, sleep } from "@src/util/randomDelay";
-import { db } from "@src/database/listings";
+import { getMarketPrice } from "@src/database/listings";
+import { getNpcStockPrice } from "@src/database/npcStock";
+import { getDarkestPixel } from "@src/captcha";
 
 function clickCoordinate(x: number, y: number) {
     const element = assume(document.elementFromPoint(x, y));
@@ -64,9 +65,9 @@ const CLOSE_ENOUGH = 100;
 async function getNextOffer() {
     const itemName = assume($("h2")).innerText.split("Haggle for ")[1];
     const currentAsk = extractNumber(assume($("#shopkeeper_makes_deal")));
-    const stockPrice = await db.getNpcStockPrice(itemName);
+    const stockPrice = await getNpcStockPrice(itemName);
 
-    const profit = (await db.getMarketPrice(itemName)) - stockPrice;
+    const profit = (await getMarketPrice(itemName)) - stockPrice;
     const profitRatio = profit / stockPrice;
     const probablyHighlyContested = profit > 10000 && profitRatio > 0.5;
     if (probablyHighlyContested) {
