@@ -4,6 +4,7 @@ import {
     stageItemForPricing,
 } from "@src/pricingQueue";
 import { db, Listing } from "@src/database/listings";
+import { openLink } from "@src/util/navigationHelpers";
 
 function getFulfillPlan(quantity: number, topPrices: Listing[]) {
     const unGroupedPrices = topPrices.flatMap((price) =>
@@ -39,14 +40,14 @@ async function annotateJobPosting(row: HTMLElement) {
         row.style.opacity = "0.15";
     }
 
-    const listings = await db.getListings(itemName);
+    const listings = await db.getListings(itemName, 8);
     if (listings.length > 0) {
         const fulfillPlan = getFulfillPlan(quantity, listings);
 
         const profitLabel = document.createElement("a");
         profitLabel.href = "javascript:void(0)";
         profitLabel.onclick = () => {
-            fulfillPlan.linksToOpen.forEach((link) => window.open(link));
+            fulfillPlan.linksToOpen.forEach(openLink);
         };
         profitLabel.append("\u00A0\u00A0\u00A0Profit: ");
         row.appendChild(profitLabel);
@@ -65,7 +66,7 @@ async function annotateJobPosting(row: HTMLElement) {
             shop.href = "javascript:void(0)";
             shop.text = ` ${listing.price} x ${listing.quantity} `;
             shop.onclick = () => {
-                window.open(listing.link);
+                openLink(listing.link);
             };
             shops.appendChild(shop);
         });

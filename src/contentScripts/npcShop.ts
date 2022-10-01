@@ -6,6 +6,7 @@ import { assume } from "@src/util/typeAssertions";
 import { $All } from "@src/util/domHelpers";
 import { db, NpcStockData } from "@src/database/listings";
 import { daysAgo } from "@src/util/dateTime";
+import { openLink } from "@src/util/navigationHelpers";
 
 function getInfoContainer(item: HTMLElement): HTMLElement {
     let container = item.querySelector<HTMLElement>(".neato-info");
@@ -88,7 +89,7 @@ async function annotateShopItem(item: HTMLElement) {
     marketPriceLink.append(marketPrice.toString());
     marketPriceLink.href = "javascript:void(0)";
     marketPriceLink.onclick = () => {
-        window.open(listings[0].link);
+        openLink(listings[0].link);
     };
     haggleBuySellLabel.append(marketPriceLink);
     extraInfo.append(haggleBuySellLabel);
