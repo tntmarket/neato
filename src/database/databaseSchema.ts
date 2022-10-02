@@ -22,3 +22,4 @@ class Database extends Dexie {
 }
 
 export const db = new Database();
+

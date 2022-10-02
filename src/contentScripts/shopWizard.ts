@@ -16,6 +16,7 @@ import { switchToUnbannedAccount } from "@src/accounts";
 import { getNextItemsToReprice } from "@src/priceMonitoring";
 import { queueUserShopToVisit } from "@src/userShopQueue";
 import { waitReady } from "@src/util/domHelpers";
+import { migrateContentScriptDBToBackground } from "@src/background/migration";
 import { ljs } from "@src/util/logging";
 
 function priceFromRow(row: HTMLElement): ListingData {
@@ -318,4 +319,6 @@ refreshHUD();
 
 if (isAutoProcessingQueue.get()) {
     processQueueItem();
+} else {
+    migrateContentScriptDBToBackground();
 }
