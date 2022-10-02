@@ -1,2 +1,2 @@
 // Import global app.css file
-import "../src/css/app.css";
+import "../src/controlPanel/app.css";

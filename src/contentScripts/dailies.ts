@@ -1,4 +1,4 @@
-import { $, $All, waitReady } from "@src/util/domHelpers";
+import { $, $All, getInputByValue, waitReady } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import {
     normalDelay,
@@ -8,10 +8,6 @@ import {
 
 function selectOption(selector: string, value: string) {
     assume($<HTMLSelectElement>(selector)).value = value;
-}
-
-function getInput(value: string): HTMLInputElement | null {
-    return document.querySelector(`input[value="${value}"]`);
 }
 
 async function trudysSurprise() {
@@ -52,7 +48,7 @@ async function trudysSurprise() {
 }
 
 async function fruitMachine() {
-    assume(getInput("Spin, spin, spin!")).click();
+    assume(getInputByValue("Spin, spin, spin!")).click();
 }
 
 async function graveDanger() {
@@ -70,12 +66,12 @@ async function graveDanger() {
 }
 
 async function desertedTomb() {
-    getInput("Open the door...")?.click();
-    getInput("Continue on...")?.click();
+    getInputByValue("Open the door...")?.click();
+    getInputByValue("Continue on...")?.click();
 }
 
 async function coltzansShrine() {
-    getInput("Approach the Shrine")?.click();
+    getInputByValue("Approach the Shrine")?.click();
 }
 
 async function appleBobbing() {
@@ -87,17 +83,17 @@ async function anchorManagement() {
 }
 
 async function tombola() {
-    getInput("Play Tombola!")?.click();
+    getInputByValue("Play Tombola!")?.click();
 }
 
 async function shopOfOffers() {}
 
 async function giantJelly() {
-    getInput("Grab some Jelly")?.click();
+    getInputByValue("Grab some Jelly")?.click();
 }
 
 async function giantOmelette() {
-    getInput("Grab some Omelette")?.click();
+    getInputByValue("Grab some Omelette")?.click();
 }
 
 async function symolHole() {
@@ -106,11 +102,11 @@ async function symolHole() {
 }
 
 async function discardedPlushie() {
-    getInput("Talk to the Plushie")?.click();
+    getInputByValue("Talk to the Plushie")?.click();
 }
 
 async function underwaterFishing() {
-    getInput("Reel In Your Line")?.click();
+    getInputByValue("Reel In Your Line")?.click();
 }
 
 async function stockMarket() {
@@ -130,14 +126,14 @@ async function stockMarket() {
     if (location.href.includes("type=buy")) {
         assume($<HTMLInputElement>('input[name="amount_shares"]')).value =
             "1000";
-        getInput("Buy Shares")?.click();
+        getInputByValue("Buy Shares")?.click();
     }
 }
 
 async function guessTheWeightOfTheMarrow() {
     const weightInput = assume($<HTMLInputElement>('input[name="guess"]'));
     weightInput.value = Math.round(randomUniformBetween(200, 800)).toString();
-    getInput("Guess!")?.click();
+    getInputByValue("Guess!")?.click();
 }
 
 async function turmaculus() {
@@ -183,7 +179,7 @@ async function wheelOfKnowledge() {
 }
 
 async function winterKiosk() {
-    getInput("Yes, I will have one please")?.click();
+    getInputByValue("Yes, I will have one please")?.click();
 }
 
 const linkToRoutine = {
@@ -225,7 +221,7 @@ Object.entries(linkToRoutine).forEach(async ([link, routine]) => {
 async function potatoCounter() {
     await waitReady();
 
-    const playAgain = getInput("Play Again");
+    const playAgain = getInputByValue("Play Again");
     if (playAgain) {
         await normalDelay(444);
         playAgain.click();
@@ -241,7 +237,7 @@ async function potatoCounter() {
     assume($<HTMLInputElement>('input[name="guess"]')).value =
         numberOfPotatoes.toString();
 
-    getInput("Guess!")?.click();
+    getInputByValue("Guess!")?.click();
 }
 
 if (location.href.includes("/medieval/potatocounter.phtml")) {
@@ -273,8 +269,8 @@ async function academyTraining() {
         location.assign("/pirates/academy.phtml?type=courses");
     }
     if (location.href.includes("type=status")) {
-        getInput("Pay")?.click();
-        getInput("Complete Course!")?.click();
+        getInputByValue("Pay")?.click();
+        getInputByValue("Complete Course!")?.click();
     }
     if (location.href.includes("type=courses")) {
         const courseType = assume(

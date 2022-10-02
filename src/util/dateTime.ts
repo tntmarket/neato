@@ -4,3 +4,7 @@ export function daysAgo(epochMillis: number) {
         10
     );
 }
+
+export function hoursAgo(epochMillis: number) {
+    return (Date.now() - epochMillis) / (1000 * 60 * 60);
+}

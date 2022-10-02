@@ -32,3 +32,7 @@ export async function domLoaded(timeout = 11111) {
         sleep(timeout),
     ]);
 }
+
+export function getInputByValue(value: string): HTMLInputElement | null {
+    return document.querySelector(`input[value="${value}"]`);
+}

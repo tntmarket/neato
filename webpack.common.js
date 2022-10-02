@@ -12,13 +12,11 @@ const contentScripts = fs.readdirSync("./src/contentScripts").reduce(
     {},
 );
 
-console.log(contentScripts);
-
 module.exports = {
     entry: {
         ...contentScripts,
         backgroundPage: path.join(__dirname, "src/backgroundPage.ts"),
-        popup: path.join(__dirname, "src/popup/index.tsx"),
+        controlPanel: path.join(__dirname, "src/controlPanel/index.tsx"),
     },
     output: {
         path: path.join(__dirname, "dist/js"),
