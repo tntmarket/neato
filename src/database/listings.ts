@@ -12,7 +12,7 @@ export type ListingData = {
     userName: string;
 };
 
-export async function addListings(
+async function addListings(
     itemName: string,
     lastSeen: number,
     listings: ListingData[],

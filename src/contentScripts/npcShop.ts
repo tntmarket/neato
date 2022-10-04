@@ -1,13 +1,64 @@
-import {
-    overlayButtonToCommitItemsForPricing,
-    stageItemForPricing,
-} from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
-import { $All } from "@src/util/domHelpers";
+import { $, $All } from "@src/util/domHelpers";
 import { getListings } from "@src/database/listings";
 import { daysAgo } from "@src/util/dateTime";
 import { openLink } from "@src/util/navigationHelpers";
-import { addNpcStocks, NpcStockData } from "@src/database/npcStock";
+import { NpcStockData } from "@src/database/npcStock";
+import { normalDelay } from "@src/util/randomDelay";
+import { callProcedure } from "@src/background/procedure";
+import { ensureListener } from "@src/util/scriptInjection";
+
+ensureListener(
+    (
+        request:
+            | { action: "GET_NPC_STOCK" }
+            | { action: "HAGGLE_FOR_ITEM"; itemName: string },
+    ) => {
+        if (request.action === "GET_NPC_STOCK") {
+            return scrapeNpcStock();
+        }
+        if (request.action === "HAGGLE_FOR_ITEM") {
+            return startHaggling(request.itemName);
+        }
+    },
+);
+
+function shopItemToStockData(item: HTMLElement): NpcStockData {
+    return {
+        itemName: assume(item.querySelector<HTMLElement>(".item-name"))
+            .innerText,
+        price: parseInt(
+            item
+                .querySelectorAll<HTMLInputElement>(".item-stock")[1]
+                .innerText.split("Cost: ")[1]
+                .replaceAll(",", ""),
+        ),
+        quantity: parseInt(
+            assume(item.querySelectorAll<HTMLElement>(".item-stock")[0])
+                .innerText,
+        ),
+    };
+}
+
+async function scrapeNpcStock(): Promise<NpcStockData[]> {
+    return $All(".shop-item").map(shopItemToStockData);
+}
+
+async function startHaggling(itemToHaggleFor: string) {
+    for (const item of $All(".shop-item")) {
+        const { itemName } = shopItemToStockData(item);
+        if (itemName === itemToHaggleFor) {
+            const itemImage = assume(
+                item.querySelector<HTMLElement>(".item-img"),
+            );
+            itemImage.click();
+            await normalDelay(222);
+            assume($("#confirm-link")).click();
+            return;
+        }
+    }
+    throw new Error(`Couldn't find ${itemToHaggleFor}`);
+}
 
 function getInfoContainer(item: HTMLElement): HTMLElement {
     let container = item.querySelector<HTMLElement>(".neato-info");
@@ -22,27 +73,10 @@ function getInfoContainer(item: HTMLElement): HTMLElement {
     return container;
 }
 
-function shopItemToStockData(item: HTMLElement): NpcStockData {
-    return {
-        itemName: assume(item.querySelector<HTMLElement>(".item-name"))
-            .innerText,
-        price: parseInt(
-            item
-                .querySelectorAll<HTMLInputElement>(".item-stock")[1]
-                .innerText.split("Cost: ")[1]
-                .replaceAll(",", ""),
-        ),
-        // quantity: parseInt(
-        //     assume(item.querySelectorAll<HTMLElement>(".item-stock")[0])
-        //         .innerText,
-        // ),
-    };
-}
-
 async function annotateShopItem(item: HTMLElement) {
     const { itemName: name, price } = shopItemToStockData(item);
 
-    const listings = await getListings(name);
+    const listings = await callProcedure(getListings, name);
 
     const extraInfo = getInfoContainer(item);
     item.style.backgroundColor = "";
@@ -50,14 +84,14 @@ async function annotateShopItem(item: HTMLElement) {
 
     if (listings.length === 0) {
         item.style.opacity = "0.5";
-        stageItemForPricing(name);
+        // stageItemForPricing(name);
         return;
     }
 
     if (daysAgo(listings[0].lastSeen) > 3) {
         extraInfo.style.background = "lightgray";
         extraInfo.style.opacity = "0.5";
-        stageItemForPricing(name);
+        // stageItemForPricing(name);
     }
 
     const marketPrice = listings[0].price;
@@ -104,19 +138,9 @@ async function annotateShopItem(item: HTMLElement) {
     }
 }
 
-async function addProfitInfo() {
-    await Promise.all($All(".shop-item").map(annotateShopItem));
+function annotateShopStock() {
+    $All(".shop-item").map(annotateShopItem);
 }
 
-async function initiallyAnotateItems() {
-    const npcStocks = $All(".shop-item").map(shopItemToStockData);
-    const shopId = parseInt(
-        assume(new URLSearchParams(location.search).get("obj_type")),
-    );
-
-    await Promise.all([addNpcStocks(shopId, npcStocks), addProfitInfo()]);
-    overlayButtonToCommitItemsForPricing();
-}
-
-initiallyAnotateItems();
-setInterval(addProfitInfo, 1000);
+annotateShopStock();
+// overlayButtonToCommitItemsForPricing();

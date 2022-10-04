@@ -20,9 +20,10 @@ function rowToEntry(row: HTMLElement): JellyNeoEntryData {
 async function addItemsToMonitorList() {
     await domLoaded();
 
-    const response = await callProcedure(addJellyNeoItems, {
-        itemsFromJellyNeo: $All("td").map(rowToEntry),
-    });
+    const response = await callProcedure(
+        addJellyNeoItems,
+        $All("td").map(rowToEntry),
+    );
 
     l(response);
 }

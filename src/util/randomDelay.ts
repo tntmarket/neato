@@ -1,5 +1,5 @@
-export function normalDelay(ms: number) {
-    return sleep(randomPercentRange(ms, 0.8));
+export function normalDelay(ms: number, percentageRange = 0.8) {
+    return sleep(randomPercentRange(ms, percentageRange));
 }
 
 export function sleep(ms: number) {

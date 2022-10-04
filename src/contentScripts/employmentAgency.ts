@@ -5,6 +5,7 @@ import {
 } from "@src/pricingQueue";
 import { getListings, Listing } from "@src/database/listings";
 import { openLink } from "@src/util/navigationHelpers";
+import { callProcedure } from "@src/background/procedure";
 
 function getFulfillPlan(quantity: number, topPrices: Listing[]) {
     const unGroupedPrices = topPrices.flatMap((price) =>
@@ -40,7 +41,7 @@ async function annotateJobPosting(row: HTMLElement) {
         row.style.opacity = "0.15";
     }
 
-    const listings = await getListings(itemName, 8);
+    const listings = await callProcedure(getListings, itemName, 8);
     if (listings.length > 0) {
         const fulfillPlan = getFulfillPlan(quantity, listings);
 

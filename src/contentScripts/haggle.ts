@@ -1,9 +1,43 @@
 import { $, $All } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
-import { normalDelay, sleep } from "@src/util/randomDelay";
-import { getMarketPrice } from "@src/database/listings";
-import { getNpcStockPrice } from "@src/database/npcStock";
+import { normalDelay } from "@src/util/randomDelay";
 import { getDarkestPixel } from "@src/captcha";
+import browser from "webextension-polyfill";
+
+export type HaggleDetails = {
+    itemName: string;
+    lastOffer: number;
+    currentAsk: number;
+};
+
+export type HaggleSituation =
+    | (HaggleDetails & {
+          status: "HAGGLING";
+      })
+    | {
+          status: "OUT_OF_MONEY";
+      }
+    | {
+          status: "SOLD_OUT";
+      }
+    | {
+          status: "OFFER_ACCEPTED";
+      };
+
+browser.runtime.onMessage.addListener(
+    (
+        request:
+            | { action: "MAKE_HAGGLE_OFFER"; offer: number }
+            | { action: "GET_HAGGLE_SITUATION" },
+    ) => {
+        if (request.action === "MAKE_HAGGLE_OFFER") {
+            return makeHaggleOffer(request.offer);
+        }
+        if (request.action === "GET_HAGGLE_SITUATION") {
+            return getHaggleSituation();
+        }
+    },
+);
 
 function clickCoordinate(x: number, y: number) {
     const element = assume(document.elementFromPoint(x, y));
@@ -19,7 +53,7 @@ function clickCoordinate(x: number, y: number) {
     );
 }
 
-async function submitOffer(offer: number) {
+async function makeHaggleOffer(offer: number) {
     assume($<HTMLInputElement>('input[name="current_offer"]')).value =
         offer.toString();
 
@@ -53,62 +87,32 @@ function extractNumber(element: HTMLElement): number {
     return parseInt(element.innerText.replace(/[^0-9]+/g, ""));
 }
 
-function makeHumanTypable(amount: number) {
-    const tail = amount % 1000;
-    const head = amount - tail;
-    const repeatedTail = 111 * Math.floor(tail / 111);
-    return head + repeatedTail;
-}
+async function getHaggleSituation(): Promise<HaggleSituation> {
+    const text = assume($(".container")?.innerText);
+    if (text.includes("I accept your offer")) {
+        return {
+            status: "OFFER_ACCEPTED",
+        };
+    }
+    if (text.includes("SOLD OUT")) {
+        return {
+            status: "SOLD_OUT",
+        };
+    }
+    if (text.includes("don't have that kind of money")) {
+        return {
+            status: "OUT_OF_MONEY",
+        };
+    }
 
-const CLOSE_ENOUGH = 100;
-
-async function getNextOffer() {
     const itemName = assume($("h2")).innerText.split("Haggle for ")[1];
     const currentAsk = extractNumber(assume($("#shopkeeper_makes_deal")));
-    const stockPrice = await getNpcStockPrice(itemName);
-
-    const profit = (await getMarketPrice(itemName)) - stockPrice;
-    const profitRatio = profit / stockPrice;
-    const probablyHighlyContested = profit > 10000 && profitRatio > 0.5;
-    if (probablyHighlyContested) {
-        return makeHumanTypable(currentAsk);
-    }
-
-    const bestPrice = Math.round(stockPrice * 0.75);
     const lastOffer = extractNumber($All(".offer")[1]);
-    const haggleRoom = currentAsk - lastOffer;
-    // We've already haggled down to the best possible price
-    if (currentAsk <= bestPrice) {
-        return bestPrice;
-    }
-    // We got unlucky with discounts, there's no more room left to haggle
-    if (haggleRoom <= CLOSE_ENOUGH) {
-        // Settle for whatever price we currently have
-        return currentAsk;
-    }
 
-    const nextOffer = Math.min(
-        makeHumanTypable(lastOffer + haggleRoom / 3),
-        bestPrice,
-    );
-
-    // With small prices, the rounding might put us back at the same amount
-    if (nextOffer <= currentAsk) {
-        return makeHumanTypable(nextOffer + 150);
-    }
-    return nextOffer;
+    return {
+        status: "HAGGLING",
+        itemName,
+        currentAsk,
+        lastOffer,
+    };
 }
-
-async function makeOffer() {
-    const text = assume($(".container")?.innerText);
-    if (text.includes("I accept your offer") || text.includes("SOLD OUT")) {
-        await sleep(5000);
-        await normalDelay(555);
-        assume($(".icon-back__2020")).click();
-        return;
-    }
-    const nextOffer = await getNextOffer();
-    submitOffer(nextOffer);
-}
-
-makeOffer();

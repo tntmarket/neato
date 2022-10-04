@@ -1,61 +1,62 @@
 import { $, domLoaded } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
-import { clearListing, updateListing } from "@src/database/listings";
-import { normalDelay } from "@src/util/randomDelay";
-import {
-    overlayUserShopsToVisit,
-    tryVisitNextUserShop,
-} from "@src/userShopQueue";
-import { trackUserWasFrozen } from "@src/database/user";
 import { extractNumber } from "@src/util/textParsing";
+import browser from "webextension-polyfill";
 
-async function updateStaleListingsBasedOnUserShop() {
+browser.runtime.onMessage.addListener(
+    (request: { action: "CHECK_USER_SHOP_ITEM" }) => {
+        if (request.action === "CHECK_USER_SHOP_ITEM") {
+            return checkUserShopItem();
+        }
+    },
+);
+
+export type ShopVisitResult = {
+    listing?: {
+        link: string;
+        price: number;
+        quantity: number;
+    };
+    frozenUser?: string;
+    notFound?: true;
+};
+
+async function checkUserShopItem(): Promise<ShopVisitResult> {
     await domLoaded();
 
     const pageText = assume($(".content")).innerText;
 
     if (pageText.includes("Item not found!")) {
-        return clearListing(location.href);
+        return {
+            notFound: true,
+        };
     }
 
-    if (pageText.includes("The owner of this shop has been frozen!")) {
-        const userName: string = assume(
-            new URLSearchParams(window.location.search).get("owner"),
-        );
-        return trackUserWasFrozen(userName);
-    }
-
-    const stillWishToBuy = $(
-        `a[href="${location.pathname.slice(1)}${
-            location.search
-        }&buy_obj_confirm=yes"]`,
+    const userName: string = assume(
+        new URLSearchParams(window.location.search).get("owner"),
     );
-    if (stillWishToBuy) {
-        stillWishToBuy.click();
-        return;
+    if (pageText.includes("The owner of this shop has been frozen!")) {
+        return { frozenUser: userName };
     }
 
     const shopItem = $('table[align="center"]');
-    // For some reason, we don't always get a "Item not found!" message
     if (!shopItem || shopItem.innerText.trim() === "") {
-        return clearListing(location.href);
+        // For some reason, we don't always get a "Item not found!" message
+        return {
+            notFound: true,
+        };
     }
 
     const shopItemParts = shopItem.innerText.split("\n");
     const quantity = parseInt(shopItemParts[2]);
     const price = extractNumber(shopItemParts[3]);
-    return updateListing(
-        location.href
-            .replace("&lower=0", "")
-            .replace("&buy_obj_confirm=yes", ""),
-        quantity,
-        price,
-    );
+    return {
+        listing: {
+            price,
+            quantity,
+            link: location.href
+                .replace("&lower=0", "")
+                .replace("&buy_obj_confirm=yes", ""),
+        },
+    };
 }
-
-overlayUserShopsToVisit();
-updateStaleListingsBasedOnUserShop().then(async () => {
-    await normalDelay(1111);
-    tryVisitNextUserShop();
-    setInterval(tryVisitNextUserShop, 10000);
-});

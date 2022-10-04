@@ -36,3 +36,14 @@ export async function domLoaded(timeout = 11111) {
 export function getInputByValue(value: string): HTMLInputElement | null {
     return document.querySelector(`input[value="${value}"]`);
 }
+
+export function waitForElementToExist(selector: string): Promise<HTMLElement> {
+    return new Promise((resolve) => {
+        setInterval(() => {
+            const element = $(selector);
+            if (element) {
+                resolve(element);
+            }
+        }, 100);
+    });
+}

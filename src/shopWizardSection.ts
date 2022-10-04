@@ -54,7 +54,7 @@ const sectionToChars = [
     ["m", "z"],
 ];
 
-function getSection(userName: string): number {
+export function getSection(userName: string): number {
     return charToSection[userName.charAt(0).toLowerCase()];
 }
 

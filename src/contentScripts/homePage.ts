@@ -1,7 +1,9 @@
 import { $ } from "@src/util/domHelpers";
+import { shopWizardUrl } from "@src/urls";
+
 const isLoggedIn = $("#npanchor");
 if (isLoggedIn) {
-    location.href = "https://www.neopets.com/shops/wizard.phtml";
+    location.href = shopWizardUrl;
 } else {
     location.href = "https://www.neopets.com/login";
 }

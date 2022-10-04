@@ -5,13 +5,9 @@ import {
     upsertJellyNeoEntries,
 } from "@src/database/jellyNeo";
 
-type AddJellyNeoItems = {
-    itemsFromJellyNeo: JellyNeoEntryData[];
-};
-
-export async function addJellyNeoItems({
-    itemsFromJellyNeo,
-}: AddJellyNeoItems): Promise<JellyNeoEntry[]> {
+export async function addJellyNeoItems(
+    itemsFromJellyNeo: JellyNeoEntryData[],
+): Promise<JellyNeoEntry[]> {
     await upsertJellyNeoEntries(itemsFromJellyNeo);
     return getJellyNeoEntries();
 }

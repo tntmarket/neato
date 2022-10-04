@@ -1,118 +1,85 @@
-import {
-    overlayButtonToCommitItemsForPricing,
-    pushNextItemToPrice,
-    stageItemForPricing,
-} from "@src/pricingQueue";
 import { assume } from "@src/util/typeAssertions";
-import { $, $All } from "@src/util/domHelpers";
-import { getListings, Listing } from "@src/database/listings";
-import { getJsonSetting } from "@src/util/localStorage";
-import { daysAgo } from "@src/util/dateTime";
-import { openLink } from "@src/util/navigationHelpers";
+import { $All, getInputByValue } from "@src/util/domHelpers";
+import { ShopStockResults, StockedItem } from "@src/database/myShopStock";
+import { ensureListener } from "@src/util/scriptInjection";
 
-function stockedItemFromRow(row: HTMLElement) {
-    const priceInput =
-        row.querySelector<HTMLInputElement>('input[type="text"]');
+export type NameToPrice = { [itemName: string]: number };
 
-    if (!priceInput) {
-        return null;
-    }
+ensureListener(
+    (
+        request:
+            | { action: "GET_USER_SHOP_STOCK" }
+            | {
+                  action: "SET_USER_SHOP_PRICES";
+                  itemNameToPrice: NameToPrice;
+              },
+    ) => {
+        if (request.action === "GET_USER_SHOP_STOCK") {
+            return scrapeUserShopStock();
+        }
 
+        if (request.action === "SET_USER_SHOP_PRICES") {
+            return setUserShopPrices(request.itemNameToPrice);
+        }
+    },
+);
+
+async function scrapeUserShopStock(): Promise<ShopStockResults> {
     return {
-        name: row.innerText.split("\t")[0],
-        price: parseInt(priceInput.value),
+        stock: getStockRows().map(stockedItemFromRow),
+        hasMore: hasMorePages(),
     };
 }
 
-function underCut(marketPrice: number) {
-    return Math.max(marketPrice - (marketPrice % 100) - 1, 1);
+function getStockRows() {
+    return $All('form[action="process_market.phtml"] tr').slice(1, -1);
 }
 
-function getMarketPriceExcludingSelf(listings: Listing[]) {
-    return getMarketPriceEntryExcludingSelf(listings).price;
-}
+async function setUserShopPrices(itemNameToPrice: NameToPrice): Promise<{
+    hasMore: boolean;
+}> {
+    for (const row of getStockRows()) {
+        // Show the original price before discounting
+        const { itemName } = stockedItemFromRow(row);
 
-function getMarketPriceEntryExcludingSelf(listings: Listing[]): Listing {
-    if (lowestPriceIsSelf(listings)) {
-        return listings[1];
-    }
+        const newPrice = itemNameToPrice[itemName];
+        if (!newPrice) {
+            continue;
+        }
+        const priceInput = assume(
+            row.querySelector<HTMLInputElement>('input[type="text"]'),
+        );
+        const currentPrice = parseInt(priceInput.value);
 
-    return listings[0];
-}
-
-function getCurrentUser(): string | null {
-    const topRightCorner = $(".user");
-    if (topRightCorner) {
-        return topRightCorner.innerText.split("|")[0].split(" ")[1];
-    }
-    return null;
-}
-
-function lowestPriceIsSelf(listings: Listing[]) {
-    return listings[0].userName === getCurrentUser();
-}
-
-const maxPriceStalenessInDays = getJsonSetting("maxPriceStalenessInDays", 1);
-
-async function adjustPriceOfStockItem(row: HTMLElement) {
-    const item = stockedItemFromRow(row);
-    if (!item) {
-        return;
-    }
-
-    const listings = await getListings(item.name);
-
-    if (listings.length === 0) {
-        pushNextItemToPrice(item.name);
-        console.log(`${item.name} is not priced yet, submitting...`);
-        return;
-    }
-
-    const marketPriceEntry = getMarketPriceEntryExcludingSelf(listings);
-    if (daysAgo(marketPriceEntry.lastSeen) > maxPriceStalenessInDays.get()) {
-        if (getMarketPriceExcludingSelf(listings) > 500) {
-            stageItemForPricing(item.name);
-            console.log(
-                `${item.name} is ${daysAgo(
-                    marketPriceEntry.lastSeen,
-                )} days stale, submitting...`,
-            );
-        } else {
-            console.log(
-                `${item.name} is already cheap, not worth checking the price again`,
-            );
+        if (newPrice !== parseInt(priceInput.value)) {
+            priceInput.value = newPrice.toString();
+            assume(priceInput.parentNode).append(" " + currentPrice.toString());
         }
     }
 
-    const priceInput = assume(
-        row.querySelector<HTMLInputElement>('input[type="text"]'),
-    );
+    await new Promise<void>((resolve) => {
+        window.addEventListener("unload", () => resolve());
+        assume(getInputByValue("Update")).click();
+    });
 
-    const marketPrice = getMarketPriceExcludingSelf(listings);
-    const underCutPrice = underCut(marketPrice);
-    const currentPrice = parseInt(priceInput.value);
-
-    if (currentPrice > 0 && currentPrice <= underCutPrice) {
-        console.log(`${item.name} already beats market price ${marketPrice}`);
-        return;
-    }
-
-    // Show the original price before discounting
-    console.log(`${item.name}: undercutting ${marketPriceEntry.link}`);
-    const marketPriceLabel = document.createElement("a");
-    marketPriceLabel.onclick = () => {
-        openLink(marketPriceEntry.link);
+    return {
+        hasMore: hasMorePages(),
     };
-    assume(priceInput.parentNode).append(" " + currentPrice.toString());
-    priceInput.value = underCutPrice.toString();
 }
 
-async function priceStockItems() {
-    await Promise.all(
-        $All('form[action="process_market.phtml"] tr').map(
-            adjustPriceOfStockItem,
-        ),
+function hasMorePages(): boolean {
+    const nextPageButton = assume(getInputByValue("Next 30"));
+    return !nextPageButton.disabled;
+}
+
+function stockedItemFromRow(row: HTMLElement): StockedItem {
+    const priceInput = assume(
+        row.querySelector<HTMLInputElement>('input[maxlength="6"]'),
     );
-}
 
-priceStockItems().then(overlayButtonToCommitItemsForPricing);
+    return {
+        itemName: row.innerText.split("\t")[0],
+        price: parseInt(priceInput.value),
+        quantity: parseInt(row.innerText.split("\t")[2]),
+    };
+}

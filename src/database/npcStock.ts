@@ -8,15 +8,13 @@ export type NpcStock = NpcStockData & {
 export type NpcStockData = {
     itemName: string;
     price: number;
+    quantity: number;
 };
 
 export async function addNpcStocks(
     shopId: number,
     stocks: NpcStockData[],
 ): Promise<void> {
-    if (stocks.length === 0) {
-        return;
-    }
     await db.transaction("rw", db.npcStock, async () => {
         // clear previous stock
         await db.npcStock.where({ shopId }).delete();

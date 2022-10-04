@@ -1,32 +1,47 @@
 import browser from "webextension-polyfill";
 import { Tabs } from "webextension-polyfill/namespaces/tabs";
-import { assume } from "@src/util/typeAssertions";
 
 export async function ensureOneTab(url: string): Promise<Tabs.Tab> {
     const tabs = await browser.tabs.query({ url });
-
-    if (tabs.length === 0) {
+    const tab = tabs[0];
+    if (!tab) {
         return browser.tabs.create({ url });
     }
 
-    if (tabs.length > 1) {
-        for (let i = 0; i < tabs.length - 1; i += 1) {
-            await browser.tabs.remove(assume(tabs[i].id));
-        }
-    }
-
-    return tabs[0];
+    return tab;
 }
 
-export async function refreshUrl(url: string) {
-    const tabs = await browser.tabs.query({ url });
-
-    let tab = tabs[0];
-    if (!tab) {
-        tab = await browser.tabs.create({ url });
-    } else {
-        await browser.tabs.reload(tab.id);
+export async function waitForTabStatusChange(
+    tabId: number,
+    status: "loading" | "complete",
+): Promise<void> {
+    const tab = await browser.tabs.get(tabId);
+    if (tab.status === status) {
+        return;
     }
 
-    return tab.id;
+    return new Promise((resolve) => {
+        const pollForPageChange = setInterval(async () => {
+            const tab = await browser.tabs.get(tabId);
+            if (tab.status === status) {
+                clearInterval(pollForPageChange);
+                resolve();
+            }
+        }, 100);
+    });
+}
+
+export function waitForTabUrlToMatch(
+    tabId: number,
+    url: string,
+): Promise<void> {
+    return new Promise((resolve) => {
+        const pollForPageChange = setInterval(async () => {
+            const tab = await browser.tabs.get(tabId);
+            if (tab.url?.includes(url)) {
+                resolve();
+                clearInterval(pollForPageChange);
+            }
+        }, 100);
+    });
 }

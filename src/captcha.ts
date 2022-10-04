@@ -86,7 +86,7 @@ export function getDarkestPixel(
                         pixel.y,
                     );
                 });
-                if (darkestPixels.length > 100) {
+                if (darkestPixels.length > 50) {
                     break;
                 }
             }

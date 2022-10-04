@@ -4,7 +4,7 @@ import { db } from "@src/database/databaseSchema";
 import { callProcedure } from "@src/background/procedure";
 
 export async function upsertListings(listings: Listing[]) {
-    console.log(listings[0].itemName);
+    console.log(listings[0].itemName, listings.length);
     return db.transaction("rw", db.listings, async () => {
         await db.listings.bulkPut(listings);
     });

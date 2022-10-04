@@ -1,15 +1,11 @@
-import React, { useState } from "react";
-import { getJsonSetting } from "@src/util/localStorage";
+import React, { ChangeEvent } from "react";
 
 type Props = {
-    onToggle: (isEnabled: boolean) => void;
+    checked: boolean;
+    onChange: (changeEvent: ChangeEvent) => void;
 };
 
-const automateSetting = getJsonSetting("isAutomating", false);
-
-export function OnOffToggle({ onToggle }: Props) {
-    const [isAutomating, setIsAutomating] = useState(automateSetting.get());
-
+export function OnOffToggle({ checked, onChange }: Props) {
     return (
         <div className="form-control">
             <label className="label cursor-pointer">
@@ -17,12 +13,8 @@ export function OnOffToggle({ onToggle }: Props) {
                 <input
                     type="checkbox"
                     className="toggle toggle-primary"
-                    checked={isAutomating}
-                    onChange={() => {
-                        automateSetting.set(!isAutomating);
-                        setIsAutomating(!isAutomating);
-                        onToggle(!isAutomating);
-                    }}
+                    checked={checked}
+                    onChange={onChange}
                 />
             </label>
         </div>
