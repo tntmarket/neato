@@ -5,16 +5,18 @@ import {
 import { shopWizardUrl } from "@src/urls";
 import { assume } from "@src/util/typeAssertions";
 import browser, { Tabs } from "webextension-polyfill";
-import { waitForTabStatusChange } from "@src/util/tabControl";
+import { waitForTabStatus } from "@src/util/tabControl";
+import { sleep } from "@src/util/randomDelay";
 
 export async function getShopWizardTab(): Promise<Tabs.Tab> {
     const tabs = await browser.tabs.query({ url: shopWizardUrl });
     const tab = tabs[0];
-    if (!tab) {
-        return browser.tabs.create({ url: shopWizardUrl });
+    if (tab) {
+        await browser.tabs.reload(tab.id, { bypassCache: true });
+        return tab;
     }
 
-    return tab;
+    return browser.tabs.create({ url: shopWizardUrl });
 }
 
 export async function searchShopWizard(
@@ -23,30 +25,15 @@ export async function searchShopWizard(
     const tab = await getShopWizardTab();
     const tabId = assume(tab.id);
 
-    await injectScript(tabId);
+    await waitForTabStatus(tabId, "complete");
+    await ensureScriptInjected();
 
-    console.log("INJECTED");
-    const waitForLoading = waitForTabStatusChange(tabId, "loading");
-    const result = await browser.tabs.sendMessage(tabId, {
+    return browser.tabs.sendMessage(tabId, {
         action: "SEARCH_SHOP_WIZARD",
         ...request,
     });
-    console.log("RESULT", result);
-    await browser.tabs.reload(tabId, { bypassCache: true });
-    console.log("RELOADED");
-    await waitForLoading;
-    console.log("LOADED");
-    await waitForTabStatusChange(tabId, "complete");
-    console.log("COMPLETE");
-
-    return result;
 }
 
-async function injectScript(tabId: number) {
-    await browser.scripting.executeScript({
-        target: {
-            tabId,
-        },
-        files: ["js/shopWizard.js"],
-    });
+async function ensureScriptInjected() {
+    await sleep(2000);
 }

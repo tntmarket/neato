@@ -13,7 +13,7 @@ import { l, ljs } from "@src/util/logging";
 import { normalDelay } from "@src/util/randomDelay";
 import { getCurrentShopStock, recordPurchase } from "@src/database/myShopStock";
 import browser from "webextension-polyfill";
-import { waitForTabStatusChange } from "@src/util/tabControl";
+import { waitForTabStatus } from "@src/util/tabControl";
 
 type BuyOpportunity = {
     itemName: string;
@@ -184,7 +184,7 @@ export async function buyBestItemIfAny(
         await browser.tabs.reload(tabId, {
             bypassCache: true,
         });
-        await waitForTabStatusChange(tabId, "complete");
+        await waitForTabStatus(tabId, "complete");
     }
 
     await ensureNpcShopScript(tab);

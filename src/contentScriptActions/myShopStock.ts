@@ -9,9 +9,9 @@ import { getListings, Listing } from "@src/database/listings";
 import { NameToPrice } from "@src/contentScripts/myShopStock";
 import { checkPrice } from "@src/autoRestock/priceChecking";
 import { daysAgo } from "@src/util/dateTime";
-import { normalDelay } from "@src/util/randomDelay";
+import { normalDelay, sleep } from "@src/util/randomDelay";
 import { ljs } from "@src/util/logging";
-import { waitForTabStatusChange } from "@src/util/tabControl";
+import { waitForTabStatus } from "@src/util/tabControl";
 
 function myShopStockUrl(page: number): string {
     if (page === 1) {
@@ -40,32 +40,28 @@ async function setPage(tabId: number, page = 1) {
         url: myShopStockUrl(page),
     });
     await normalDelay(555);
-    await waitForTabStatusChange(tabId, "complete");
+    await waitForTabStatus(tabId, "complete");
 }
 
-async function ensureScriptInjected(tabId: number) {
-    await browser.scripting.executeScript({
-        target: {
-            tabId,
-        },
-        files: ["js/myShopStock.js"],
-    });
+async function ensureScriptInjected() {
+    await sleep(2000);
 }
 
 async function getShopStock(tabId: number): Promise<ShopStockResults> {
-    await ensureScriptInjected(tabId);
+    await ensureScriptInjected();
 
     return browser.tabs.sendMessage(tabId, {
         action: "GET_USER_SHOP_STOCK",
     });
 }
 
-const MAX_PAGES = 13;
+const MIN_PAGE = 2;
+const MAX_PAGE = 2;
 
 async function getMyShopStock(tabId: number): Promise<StockedItem[]> {
     let stockedItems: StockedItem[] = [];
 
-    for (let pageNumber = 1; pageNumber <= MAX_PAGES; pageNumber += 1) {
+    for (let pageNumber = MIN_PAGE; pageNumber <= MAX_PAGE; pageNumber += 1) {
         await setPage(tabId, pageNumber);
 
         const { stock, hasMore } = await getShopStock(tabId);
@@ -84,7 +80,7 @@ async function setShopStockPrices(
     tabId: number,
     itemNameToPrice: NameToPrice,
 ): Promise<{ hasMore: boolean }> {
-    await ensureScriptInjected(tabId);
+    await ensureScriptInjected();
 
     return browser.tabs.sendMessage(tabId, {
         action: "SET_USER_SHOP_PRICES",
@@ -96,7 +92,7 @@ async function setMyShopStockPrices(
     tabId: number,
     itemNameToPrice: NameToPrice,
 ): Promise<void> {
-    for (let pageNumber = 1; pageNumber < MAX_PAGES; pageNumber += 1) {
+    for (let pageNumber = MIN_PAGE; pageNumber <= MAX_PAGE; pageNumber += 1) {
         await setPage(tabId, pageNumber);
         const { hasMore } = await setShopStockPrices(tabId, itemNameToPrice);
 
@@ -143,14 +139,15 @@ async function getUnderCutPrice(
         if (listings.length === 0) {
             console.log(`${itemName} is unpriced. Pricing now...`);
         } else {
-            // console.log(
-            //     `${itemName} is ${daysAgo(
-            //         listings[0].lastSeen,
-            //     )} days old. Pricing now...`,
-            // );
+            console.log(
+                `${itemName} is ${daysAgo(
+                    listings[0].lastSeen,
+                )} days old. Pricing now...`,
+            );
         }
 
         const { tooManySearches } = await checkPrice(itemName);
+
         listings = await getListings(itemName);
         if (tooManySearches) {
             return { newPrice: price, tooManySearches };
@@ -172,7 +169,7 @@ export async function undercutMarketPrices(): Promise<void> {
     const tabId = await getMyShopPageTab(0);
 
     const allStockedItems = await getMyShopStock(tabId);
-    addStockedItems(allStockedItems);
+    await addStockedItems(allStockedItems);
 
     const itemNameToPrice: NameToPrice = {};
     for (const { itemName, price } of allStockedItems) {

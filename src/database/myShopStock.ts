@@ -16,7 +16,6 @@ export function addStockedItems(stockedItems: StockedItem[]): Promise<void> {
     return db.transaction("rw", db.myShopStock, async () => {
         await db.myShopStock.clear();
         await db.myShopStock.bulkPut(stockedItems);
-        console.log(await db.myShopStock.toArray());
     });
 }
 

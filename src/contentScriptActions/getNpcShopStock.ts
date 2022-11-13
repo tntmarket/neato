@@ -5,7 +5,7 @@ import { assume } from "@src/util/typeAssertions";
 import { ensureHaggleScriptInjected } from "@src/contentScriptActions/makeHaggleOffer";
 import { HaggleSituation } from "@src/contentScripts/haggle";
 import {
-    waitForTabStatusChange,
+    waitForTabStatus,
     waitForTabUrlToMatch,
 } from "@src/util/tabControl";
 import { l } from "@src/util/logging";
@@ -101,8 +101,8 @@ export class HaggleSession {
             offer,
         });
 
-        await waitForTabStatusChange(this.tabId, "loading");
-        await waitForTabStatusChange(this.tabId, "complete");
+        await waitForTabStatus(this.tabId, "loading");
+        await waitForTabStatus(this.tabId, "complete");
         await ensureHaggleScriptInjected(this.tabId);
     }
 

@@ -19,7 +19,10 @@ ensureListener(
 );
 
 async function newSearch(): Promise<void> {
+    // Get rid of "are you sure you want to navigate away?" modal
     if (window.history.replaceState) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         window.history.replaceState(null, null, window.location.href);
     }
     // return new Promise((resolve) => {
@@ -29,37 +32,37 @@ async function newSearch(): Promise<void> {
 }
 
 async function askForAnotherSection(): Promise<void> {
-    const waitForResults = waitForResultsToChange();
+    const anticipateNewResults = waitForResultsToChange();
     const resubmitButton = assume(
         document.querySelector<HTMLElement>("#resubmitWizard"),
     );
     resubmitButton.click();
-    await waitForResults;
+    await anticipateNewResults;
 }
 
-async function waitForResultsToChange(timeout = 1111): Promise<void> {
+async function waitForResultsToChange(timeout = 2222): Promise<void> {
     const shopWizardFormResults = await waitForElementToExist(
         "#shopWizardFormResults",
     );
-    await Promise.race([
-        new Promise<void>((resolve) => {
-            const observer = new MutationObserver(async () => {
-                if (
-                    shopWizardFormResults.innerText.includes("Searching for:")
-                ) {
-                    observer.disconnect();
-                    resolve();
-                }
-            });
+    return new Promise<void>((resolve) => {
+        const observer = new MutationObserver(async () => {
+            if (shopWizardFormResults.innerText.includes("Searching for:")) {
+                observer.disconnect();
+                resolve();
+            }
+        });
 
-            observer.observe(shopWizardFormResults, {
-                attributes: true,
-                childList: true,
-                subtree: true,
-            });
-        }),
-        normalDelay(timeout),
-    ]);
+        setTimeout(() => {
+            observer.disconnect();
+            resolve();
+        }, timeout);
+
+        observer.observe(shopWizardFormResults, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+        });
+    });
 }
 
 async function searchItem(itemName: string): Promise<void> {
@@ -177,5 +180,3 @@ async function searchShopWizard({
     await newSearch();
     return getResult();
 }
-
-// migrateContentScriptDBToBackground();

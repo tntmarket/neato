@@ -11,7 +11,7 @@ export async function ensureOneTab(url: string): Promise<Tabs.Tab> {
     return tab;
 }
 
-export async function waitForTabStatusChange(
+export async function waitForTabStatus(
     tabId: number,
     status: "loading" | "complete",
 ): Promise<void> {

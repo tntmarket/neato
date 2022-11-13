@@ -1,6 +1,7 @@
 import { assume } from "@src/util/typeAssertions";
 import browser from "webextension-polyfill";
 import { ShopVisitResult } from "@src/contentScripts/userShop";
+import { sleep } from "@src/util/randomDelay";
 
 export async function checkUserShopListing(
     link: string,
@@ -17,14 +18,14 @@ export async function checkUserShopListing(
         tab = await browser.tabs.create({ url: link });
     }
 
-    await browser.scripting.executeScript({
-        target: {
-            tabId: assume(tab.id),
-        },
-        files: ["js/userShop.js"],
-    });
+    await ensureScriptInjected();
+
     return browser.tabs.sendMessage(assume(tab.id), {
         action: "CHECK_USER_SHOP_ITEM",
         link,
     });
+}
+
+async function ensureScriptInjected() {
+    await sleep(2000);
 }
