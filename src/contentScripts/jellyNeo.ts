@@ -3,7 +3,7 @@ import { assume } from "@src/util/typeAssertions";
 import { l } from "@src/util/logging";
 import { JellyNeoEntryData } from "@src/database/jellyNeo";
 import { callProcedure } from "@src/background/procedure";
-import { addJellyNeoItems } from "@src/background/jellyNeo";
+import { setItemMonitorList } from "@src/background/jellyNeo";
 import { extractNumber } from "@src/util/textParsing";
 
 function rowToEntry(row: HTMLElement): JellyNeoEntryData {
@@ -21,7 +21,7 @@ async function addItemsToMonitorList() {
     await domLoaded();
 
     const response = await callProcedure(
-        addJellyNeoItems,
+        setItemMonitorList,
         $All("td").map(rowToEntry),
     );
 

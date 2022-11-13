@@ -1,4 +1,4 @@
-import { addJellyNeoItems } from "@src/background/jellyNeo";
+import { setItemMonitorList } from "@src/background/jellyNeo";
 import {
     showTables,
     upsertFrozenUser,
@@ -11,7 +11,7 @@ import { getListings } from "@src/database/listings";
 import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
 
 const PROCEDURES = [
-    addJellyNeoItems,
+    setItemMonitorList,
     upsertListings,
     upsertFrozenUser,
     showTables,

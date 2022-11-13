@@ -55,8 +55,8 @@ async function getShopStock(tabId: number): Promise<ShopStockResults> {
     });
 }
 
-const MIN_PAGE = 2;
-const MAX_PAGE = 2;
+const MIN_PAGE = 1;
+const MAX_PAGE = 13;
 
 async function getMyShopStock(tabId: number): Promise<StockedItem[]> {
     let stockedItems: StockedItem[] = [];

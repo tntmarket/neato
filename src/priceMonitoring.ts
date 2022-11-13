@@ -2,14 +2,17 @@ import { getListings, Listing } from "@src/database/listings";
 import { daysAgo } from "@src/util/dateTime";
 import { ljs } from "@src/util/logging";
 import { db } from "@src/database/databaseSchema";
+import { getNpcStock } from "@src/database/npcStock";
 
-export async function getNextItemsToReprice(
-    limit = 20,
-    fresherThanDays = 0,
-): Promise<string[]> {
-    const allItemNames = await db.transaction("r", db.listings, () =>
-        db.listings.orderBy("itemName").uniqueKeys(),
+export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
+    const allItemNames = new Set(
+        await db.transaction("r", db.listings, () =>
+            db.listings.orderBy("itemName").uniqueKeys(),
+        ),
     );
+
+    const stockedItems = await getNpcStock();
+    stockedItems.forEach((stock) => allItemNames.add(stock.itemName));
 
     const rankingResults: {
         itemName: string;
@@ -19,11 +22,21 @@ export async function getNextItemsToReprice(
     }[] = [];
 
     await Promise.all(
-        allItemNames.map(async (itemName) => {
+        [...allItemNames].map(async (itemName) => {
             if (typeof itemName !== "string") {
                 throw new Error(`${itemName.toString()} is not an item name`);
             }
             const listings = await getListings(itemName, 100);
+
+            if (listings.length === 0) {
+                rankingResults.push({
+                    itemName,
+                    price1: 0,
+                    price2: 0,
+                    daysUntilStale: -99999,
+                });
+                return;
+            }
 
             const estimatedDaysUntilPriceChange =
                 await estimateDaysToImpactfulPriceChange(listings);
@@ -45,7 +58,7 @@ export async function getNextItemsToReprice(
         throw new Error("No items exist in the database to re-price");
     }
     return ljs(rankingResults.slice(0, limit))
-        .filter((result) => result.daysUntilStale <= fresherThanDays)
+        .filter((result) => result.daysUntilStale <= 0)
         .map((result) => result.itemName);
 }
 

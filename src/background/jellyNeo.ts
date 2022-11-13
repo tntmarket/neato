@@ -2,12 +2,12 @@ import {
     getJellyNeoEntries,
     JellyNeoEntry,
     JellyNeoEntryData,
-    upsertJellyNeoEntries,
+    putJellyNeoEntries,
 } from "@src/database/jellyNeo";
 
-export async function addJellyNeoItems(
+export async function setItemMonitorList(
     itemsFromJellyNeo: JellyNeoEntryData[],
 ): Promise<JellyNeoEntry[]> {
-    await upsertJellyNeoEntries(itemsFromJellyNeo);
+    await putJellyNeoEntries(itemsFromJellyNeo);
     return getJellyNeoEntries();
 }

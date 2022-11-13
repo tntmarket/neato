@@ -29,6 +29,12 @@ export async function addNpcStocks(
     });
 }
 
+export function getNpcStock(): Promise<NpcStock[]> {
+    return db.transaction("r", db.npcStock, async () => {
+        return db.npcStock.toArray();
+    });
+}
+
 export function getNpcStockPrice(itemName: string): Promise<number> {
     return db.transaction("r", db.npcStock, async () => {
         const stock = await db.npcStock

@@ -20,8 +20,8 @@ export function getDarkestPixel(
             const imageBoundingBox = assume(
                 $('input[type="image"]'),
             ).getBoundingClientRect();
-            canvas.style.top = `${imageBoundingBox.top + 3}px`;
-            canvas.style.left = `${imageBoundingBox.left + 3}px`;
+            canvas.style.top = `${imageBoundingBox.top + 1}px`;
+            canvas.style.left = `${imageBoundingBox.left + 1}px`;
             canvas.style.pointerEvents = "none";
             canvas.style.zIndex = "9999";
             canvas.style.position = "absolute";

@@ -1,6 +1,5 @@
 import { getListings, getMarketPrice } from "@src/database/listings";
 import {
-    ensureNpcShopScript,
     getNpcShopStock,
     getNpcStockTab,
     HaggleSession,
@@ -10,7 +9,7 @@ import { HaggleDetails } from "@src/contentScripts/haggle";
 import { getNpcStockPrice } from "@src/database/npcStock";
 import { assume } from "@src/util/typeAssertions";
 import { l, ljs } from "@src/util/logging";
-import { normalDelay } from "@src/util/randomDelay";
+import { normalDelay, sleep } from "@src/util/randomDelay";
 import { getCurrentShopStock, recordPurchase } from "@src/database/myShopStock";
 import browser from "webextension-polyfill";
 import { waitForTabStatus } from "@src/util/tabControl";
@@ -30,7 +29,7 @@ type BuyOpportunity = {
     futureHaggleProfitRatio: number;
 };
 
-function underTimeNTimes(price: number, timesToUndercut: number) {
+function undercutNTimes(price: number, timesToUndercut: number) {
     let underCutPrice = price;
     for (let i = 0; i < timesToUndercut; i += 1) {
         underCutPrice = Math.min(underCutPrice * 0.95, underCutPrice - 100);
@@ -43,12 +42,16 @@ async function estimateProfitability(
     shopId: number,
 ): Promise<BuyOpportunity[]> {
     const npcStock = await getNpcShopStock(tabId, shopId);
-    return Promise.all(
+    const buyOpportunities: BuyOpportunity[] = [];
+    await Promise.all(
         npcStock.map(async ({ itemName, price, quantity }) => {
             const listings = await getListings(itemName);
+            const listing = listings[0];
+            if (!listing) {
+                return;
+            }
 
-            const marketPrice =
-                listings.length > 1 ? listings[0].price : 100_000;
+            const marketPrice = listings[0].price;
 
             const hagglePrice = price * 0.75;
             const haggleProfit = marketPrice - hagglePrice;
@@ -60,14 +63,14 @@ async function estimateProfitability(
             const alreadyStocked = await getCurrentShopStock(itemName);
             // Penalize buying lots of the same item, cause the price will
             // change by time it's next up to be sold.
-            const futureMarketPrice = underTimeNTimes(
+            const futureMarketPrice = undercutNTimes(
                 marketPrice,
                 alreadyStocked,
             );
             const futureHaggleProfit = futureMarketPrice - hagglePrice;
             const futureHaggleProfitRatio = futureHaggleProfit / hagglePrice;
 
-            return {
+            buyOpportunities.push({
                 itemName,
                 hoursStale: listings[0] ? hoursAgo(listings[0].lastSeen) : 0,
                 quantity,
@@ -80,9 +83,10 @@ async function estimateProfitability(
                 alreadyStocked,
                 futureHaggleProfit,
                 futureHaggleProfitRatio,
-            };
+            });
         }),
     );
+    return buyOpportunities;
 }
 
 function isWorth({
@@ -184,10 +188,11 @@ export async function buyBestItemIfAny(
         await browser.tabs.reload(tabId, {
             bypassCache: true,
         });
-        await waitForTabStatus(tabId, "complete");
     }
 
-    await ensureNpcShopScript(tab);
+    // Ensure script injected
+    await waitForTabStatus(tabId, "complete");
+    await sleep(1000);
 
     const buyOpportunity = await bestItemToHaggleFor(tabId, shopId);
 

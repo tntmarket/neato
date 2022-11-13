@@ -2,13 +2,10 @@ import browser from "webextension-polyfill";
 import { Tabs } from "webextension-polyfill/namespaces/tabs";
 import { addNpcStocks, NpcStockData } from "@src/database/npcStock";
 import { assume } from "@src/util/typeAssertions";
-import { ensureHaggleScriptInjected } from "@src/contentScriptActions/makeHaggleOffer";
 import { HaggleSituation } from "@src/contentScripts/haggle";
-import {
-    waitForTabStatus,
-    waitForTabUrlToMatch,
-} from "@src/util/tabControl";
+import { waitForTabStatus, waitForTabUrlToMatch } from "@src/util/tabControl";
 import { l } from "@src/util/logging";
+import { sleep } from "@src/util/randomDelay";
 
 function shopUrl(shopId: number) {
     return `https://www.neopets.com/objects.phtml?type=shop&obj_type=${shopId}`;
@@ -46,15 +43,6 @@ export async function getNpcStockTab(
     }
 
     return { tab, justRefreshed: false };
-}
-
-export async function ensureNpcShopScript(tab: Tabs.Tab) {
-    await browser.scripting.executeScript({
-        target: {
-            tabId: assume(tab.id),
-        },
-        files: ["js/npcShop.js"],
-    });
 }
 
 export async function getNpcShopStock(
@@ -102,7 +90,6 @@ export class HaggleSession {
         });
 
         await waitForTabStatus(this.tabId, "loading");
-        await waitForTabStatus(this.tabId, "complete");
         await ensureHaggleScriptInjected(this.tabId);
     }
 
@@ -111,4 +98,9 @@ export class HaggleSession {
             action: "GET_HAGGLE_SITUATION",
         });
     }
+}
+
+async function ensureHaggleScriptInjected(tabId: number) {
+    await waitForTabStatus(tabId, "complete");
+    await sleep(1000);
 }

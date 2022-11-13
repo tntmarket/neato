@@ -89,7 +89,7 @@ async function cycleThroughShopsUntilNoProfitableItems(
 }
 
 async function repriceStalestItems() {
-    const itemsToReprice = await callProcedure(getNextItemsToReprice, 20, 0);
+    const itemsToReprice = await callProcedure(getNextItemsToReprice, 20);
     if (itemsToReprice.length === 0) {
         return;
     }
@@ -111,8 +111,8 @@ async function repriceStalestItems() {
 
 async function alternateBetweenPriceCheckingAndBuying(shopIds: number[]) {
     await callProcedure(undercutMarketPrices);
-    // await cycleThroughShopsUntilNoProfitableItems(shopIds);
-    // await repriceStalestItems();
+    await cycleThroughShopsUntilNoProfitableItems(shopIds);
+    await repriceStalestItems();
 }
 
 const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15]);

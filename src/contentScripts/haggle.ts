@@ -24,6 +24,8 @@ export type HaggleSituation =
           status: "OFFER_ACCEPTED";
       };
 
+const pixelToClick = highlightPixel();
+
 browser.runtime.onMessage.addListener(
     (
         request:
@@ -53,10 +55,7 @@ function clickCoordinate(x: number, y: number) {
     );
 }
 
-async function makeHaggleOffer(offer: number) {
-    assume($<HTMLInputElement>('input[name="current_offer"]')).value =
-        offer.toString();
-
+async function highlightPixel(): Promise<{ x: number; y: number }> {
     document.body.style.overflow = "hidden";
     const image = assume($<HTMLImageElement>('input[type="image"]'));
 
@@ -72,7 +71,7 @@ async function makeHaggleOffer(offer: number) {
     const pointer = document.createElement("div");
     pointer.style.position = "absolute";
     pointer.style.zIndex = "999999";
-    pointer.style.background = "darkgreen";
+    pointer.style.background = "coral";
     pointer.style.width = `6px`;
     pointer.style.height = `6px`;
     pointer.style.left = `${clickX + 1}px`;
@@ -80,7 +79,15 @@ async function makeHaggleOffer(offer: number) {
     pointer.style.pointerEvents = "none";
     document.body.append(pointer);
 
-    clickCoordinate(clickX, clickY);
+    return { x, y };
+}
+
+async function makeHaggleOffer(offer: number) {
+    assume($<HTMLInputElement>('input[name="current_offer"]')).value =
+        offer.toString();
+
+    const { x, y } = await pixelToClick;
+    clickCoordinate(x, y);
 }
 
 function extractNumber(element: HTMLElement): number {

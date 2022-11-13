@@ -46,10 +46,6 @@
             "js": ["js/jellyNeo.js"]
         },
         {
-            "matches": ["https://items.jellyneo.net/search/print/*"],
-            "js": ["js/jellyNeo.js"]
-        },
-        {
             "matches": ["https://www.neopets.com/market.phtml?*type=your*"],
             "js": ["js/myShopStock.js"]
         },
@@ -60,6 +56,14 @@
         {
             "matches": ["https://www.neopets.com/browseshop.phtml*"],
             "js": ["js/userShop.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/objects.phtml?*type=shop*"],
+            "js": ["js/npcShop.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/haggle.phtml*"],
+            "js": ["js/haggle.js"]
         }
     ],
     "background": {
