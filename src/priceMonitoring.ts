@@ -3,6 +3,7 @@ import { daysAgo } from "@src/util/dateTime";
 import { ljs } from "@src/util/logging";
 import { db } from "@src/database/databaseSchema";
 import { getNpcStock } from "@src/database/npcStock";
+import { getJellyNeoEntries } from "@src/database/jellyNeo";
 
 export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
     const allItemNames = new Set(
@@ -13,6 +14,9 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
 
     const stockedItems = await getNpcStock();
     stockedItems.forEach((stock) => allItemNames.add(stock.itemName));
+
+    const neoJellyItems = await getJellyNeoEntries();
+    neoJellyItems.forEach((stock) => allItemNames.add(stock.itemName));
 
     const rankingResults: {
         itemName: string;
@@ -33,13 +37,23 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
                     itemName,
                     price1: 0,
                     price2: 0,
-                    daysUntilStale: -99999,
+                    daysUntilStale: -999,
+                });
+                return;
+            }
+
+            if (listings[0].userName === "0_NOT_A_REAL_USER!") {
+                rankingResults.push({
+                    itemName,
+                    price1: 0,
+                    price2: 0,
+                    daysUntilStale: -9999,
                 });
                 return;
             }
 
             const estimatedDaysUntilPriceChange =
-                await estimateDaysToImpactfulPriceChange(listings);
+                estimateDaysToImpactfulPriceChange(listings);
             const daysUntilPriceIsTooStale =
                 estimatedDaysUntilPriceChange - daysAgo(listings[0].lastSeen);
 
@@ -62,15 +76,18 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
         .map((result) => result.itemName);
 }
 
-async function estimateDaysToImpactfulPriceChange(
+export function estimateDaysToImpactfulPriceChange(
     listings: Listing[],
-): Promise<number> {
+): number {
+    if (listings.length === 0) {
+        return -7;
+    }
+
     const marketPrice = listings[0].price;
 
     return (
-        7 +
         // Wait longer to re-check junk
-        20 * likelyToStayJunk(marketPrice) +
+        30 * likelyToStayJunk(marketPrice) +
         // Wait longer to re-check expensive stuff
         10 * likelyToStayExpensive(marketPrice) +
         // Expedite if the listings are shallow
@@ -118,8 +135,6 @@ function liquidityIsShallow(listings: Listing[]) {
     return 4 - Math.log10(priceGap);
 }
 
-// Volatile prices can swing quickly.
-// It can also mean we got incomplete results in the previous scrape
 function likelyToStayExpensive(marketPrice: number) {
     if (marketPrice > 100000) {
         return 1;

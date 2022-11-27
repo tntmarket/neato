@@ -61,7 +61,8 @@ export function updateListing(
     price: number,
 ): Promise<void> {
     return db.transaction("rw", db.listings, async () => {
-        await db.listings.where({ link }).modify({
+        const listing = db.listings.where({ link });
+        await listing.modify({
             link: link.replace(
                 /buy_cost_neopoints=[0-9]+/,
                 `buy_cost_neopoints=${price}`,
@@ -70,6 +71,8 @@ export function updateListing(
             price,
             lastSeen: Date.now(),
         });
+
+        console.log(await listing.first());
     });
 }
 

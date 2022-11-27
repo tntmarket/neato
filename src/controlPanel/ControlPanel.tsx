@@ -3,7 +3,7 @@ import css from "./styles.module.css";
 import { OnOffToggle } from "@src/controlPanel/OnOffToggle";
 import { SearchWizardInput } from "@src/controlPanel/SearchWizardInput";
 import { checkPrice } from "@src/autoRestock/priceChecking";
-import { callProcedure } from "@src/background/procedure";
+import { getProcedure } from "@src/background/procedure";
 import { NpcShopInput } from "@src/controlPanel/NpcShopInput";
 import { buyBestItemIfAny, BuyOutcome } from "@src/autoRestock/buyingItems";
 import { normalDelay, sleep } from "@src/util/randomDelay";
@@ -11,6 +11,7 @@ import { getJsonSetting } from "@src/util/localStorage";
 import { getNextItemsToReprice } from "@src/priceMonitoring";
 import { getListings } from "@src/database/listings";
 import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
+import browser from "webextension-polyfill";
 
 let latestAutomationSessionId = 0;
 
@@ -22,7 +23,7 @@ export async function buyAllProfitableItems(
 ): Promise<BuyOutcome & { boughtAnyItem: boolean }> {
     let boughtAnyItem = false;
     while (true) {
-        const outcome = await callProcedure(buyBestItemIfAny, shopId, 555);
+        const outcome = await buyBestItemIfAny(shopId);
         console.log(outcome);
 
         if (automationSessionId !== latestAutomationSessionId) {
@@ -89,16 +90,16 @@ async function cycleThroughShopsUntilNoProfitableItems(
 }
 
 async function repriceStalestItems() {
-    const itemsToReprice = await callProcedure(getNextItemsToReprice, 20);
+    const itemsToReprice = await getNextItemsToReprice(50);
     if (itemsToReprice.length === 0) {
         return;
     }
 
     for (const item of itemsToReprice) {
         console.log("Repricing ", item);
-        const priceBefore = await callProcedure(getListings, item);
-        const { tooManySearches } = await callProcedure(checkPrice, item);
-        const priceAfter = await callProcedure(getListings, item);
+        const priceBefore = await getListings(item);
+        const { tooManySearches } = await checkPrice(item);
+        const priceAfter = await getListings(item);
         console.log(
             `${priceBefore[0]?.price}, ${priceBefore[1]?.price} => ${priceAfter[0]?.price}, ${priceAfter[1]?.price}`,
         );
@@ -110,9 +111,9 @@ async function repriceStalestItems() {
 }
 
 async function alternateBetweenPriceCheckingAndBuying(shopIds: number[]) {
-    await callProcedure(undercutMarketPrices);
-    await cycleThroughShopsUntilNoProfitableItems(shopIds);
+    // await undercutMarketPrices();
     await repriceStalestItems();
+    // await cycleThroughShopsUntilNoProfitableItems(shopIds);
 }
 
 const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15]);
@@ -123,10 +124,32 @@ export function ControlPanel() {
     const [isAutomating, setIsAutomating] = useState(false);
 
     useEffect(() => {
+        browser.runtime.onMessage.addListener(async (request, sender) => {
+            if (request.action) {
+                // The request is meant for content scripts, ignore it
+                return;
+            }
+            const procedure: (...args: any) => any = await getProcedure(
+                request,
+            );
+            delete request.procedureId;
+            try {
+                return procedure(...request.args);
+            } catch (error) {
+                console.log("ERROR", error);
+            }
+        });
+    }, []);
+
+    useEffect(() => {
         if (isAutomating) {
-            alternateBetweenPriceCheckingAndBuying(shopIds).catch((error) => {
-                console.log(error);
-            });
+            alternateBetweenPriceCheckingAndBuying(shopIds)
+                .catch((error) => {
+                    console.log(error);
+                })
+                .finally(() => {
+                    setIsAutomating(false);
+                });
         }
     }, [shopIds, isAutomating]);
 
@@ -141,7 +164,7 @@ export function ControlPanel() {
             />
             <SearchWizardInput
                 onSearch={async (itemName: string) => {
-                    await callProcedure(checkPrice, itemName);
+                    await checkPrice(itemName);
                 }}
             />
             <NpcShopInput

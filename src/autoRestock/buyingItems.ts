@@ -4,19 +4,19 @@ import {
     getNpcStockTab,
     HaggleSession,
 } from "@src/contentScriptActions/getNpcShopStock";
-import { hoursAgo } from "@src/util/dateTime";
 import { HaggleDetails } from "@src/contentScripts/haggle";
 import { getNpcStockPrice } from "@src/database/npcStock";
 import { assume } from "@src/util/typeAssertions";
-import { l, ljs } from "@src/util/logging";
+import { ljs } from "@src/util/logging";
 import { normalDelay, sleep } from "@src/util/randomDelay";
 import { getCurrentShopStock, recordPurchase } from "@src/database/myShopStock";
 import browser from "webextension-polyfill";
 import { waitForTabStatus } from "@src/util/tabControl";
+import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 
 type BuyOpportunity = {
     itemName: string;
-    hoursStale: number;
+    daysToImpactfulPriceChange: number;
     quantity: number;
     marketPrice: number;
     profit: number;
@@ -72,7 +72,8 @@ async function estimateProfitability(
 
             buyOpportunities.push({
                 itemName,
-                hoursStale: listings[0] ? hoursAgo(listings[0].lastSeen) : 0,
+                daysToImpactfulPriceChange:
+                    estimateDaysToImpactfulPriceChange(listings),
                 quantity,
                 marketPrice,
                 profit,
@@ -90,10 +91,15 @@ async function estimateProfitability(
 }
 
 function isWorth({
+    daysToImpactfulPriceChange,
     futureHaggleProfit,
     futureHaggleProfitRatio,
 }: BuyOpportunity) {
-    return futureHaggleProfit > 2000 && futureHaggleProfitRatio > 0.5;
+    return (
+        futureHaggleProfit > 2000 &&
+        futureHaggleProfitRatio > 0.5 &&
+        daysToImpactfulPriceChange <= 0
+    );
 }
 
 async function bestItemToHaggleFor(
@@ -177,10 +183,7 @@ export type BuyOutcome =
       };
 
 const MAX_HAGGLES = 10;
-export async function buyBestItemIfAny(
-    shopId: number,
-    timeToSelectItem = 555,
-): Promise<BuyOutcome> {
+export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
     const { tab, justRefreshed } = await getNpcStockTab(shopId);
     const tabId = assume(tab.id);
 
@@ -200,7 +203,8 @@ export async function buyBestItemIfAny(
         return { status: "NOTHING_TO_BUY" };
     }
 
-    await normalDelay(timeToSelectItem);
+    // Time to select item
+    await normalDelay(555);
 
     const session = await HaggleSession.start(tabId, buyOpportunity.itemName);
 

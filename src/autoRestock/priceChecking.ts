@@ -1,15 +1,11 @@
-import {
-    clearListing,
-    getListings,
-    updateListing,
-    upsertListingsSection,
-} from "@src/database/listings";
+import { getListings, upsertListingsSection } from "@src/database/listings";
 import { hoursAgo } from "@src/util/dateTime";
-import { checkUserShopListing } from "@src/contentScriptActions/checkUserShopListing";
-import { trackUserWasFrozen } from "@src/database/user";
-import { assume } from "@src/util/typeAssertions";
 import { searchShopWizard } from "@src/contentScriptActions/searchShopWizard";
 import { ljs } from "@src/util/logging";
+import browser, { Tabs } from "webextension-polyfill";
+import { assume } from "@src/util/typeAssertions";
+import { waitForTabStatus } from "@src/util/tabControl";
+import { sleep } from "@src/util/randomDelay";
 
 export async function checkPrice(
     itemName: string,
@@ -46,20 +42,27 @@ async function clearAnyInvalidListingsInFront(itemName: string) {
 
         // It's old, we failed to find it's section. Check that it's
         // still valid, to unclog potential invalid listings
-        await updateListingFromVisit(listing.link);
+        const tab = await checkUserShopListing(listing.link);
+        const tabId = assume(tab.id);
+
+        await waitForTabStatus(tabId, "complete");
+        await sleep(300);
+
+        return browser.tabs.sendMessage(tabId, {
+            action: "CHECK_USER_SHOP_ITEM",
+        });
     }
 }
 
-async function updateListingFromVisit(link: string) {
-    const result = await checkUserShopListing(link);
-    if (result.notFound) {
-        await clearListing(link);
-        return;
+async function checkUserShopListing(link: string): Promise<Tabs.Tab> {
+    const userShopTabs = await browser.tabs.query({
+        url: "https://www.neopets.com/browseshop.phtml*",
+    });
+    const tab = userShopTabs[0];
+    if (tab) {
+        return browser.tabs.update(tab.id, {
+            url: `${link}&buy_obj_confirm=yes`,
+        });
     }
-    if (result.frozenUser) {
-        await trackUserWasFrozen(result.frozenUser);
-        return;
-    }
-    const listing = assume(result.listing);
-    await updateListing(listing.link, listing.quantity, listing.price);
+    return browser.tabs.create({ url: link });
 }

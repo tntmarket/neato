@@ -35,5 +35,5 @@ export async function searchShopWizard(
 }
 
 async function ensureScriptInjected() {
-    await sleep(2000);
+    await sleep(500);
 }

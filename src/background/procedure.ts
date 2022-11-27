@@ -1,25 +1,17 @@
 import { setItemMonitorList } from "@src/background/jellyNeo";
 import {
-    showTables,
-    upsertFrozenUser,
-    upsertListings,
-} from "@src/background/migration";
-import { checkPrice } from "@src/autoRestock/priceChecking";
-import { buyBestItemIfAny } from "@src/autoRestock/buyingItems";
-import { getNextItemsToReprice } from "@src/priceMonitoring";
-import { getListings } from "@src/database/listings";
-import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
+    clearListing,
+    getListings,
+    updateListing,
+} from "@src/database/listings";
+import { trackUserWasFrozen } from "@src/database/user";
 
 const PROCEDURES = [
     setItemMonitorList,
-    upsertListings,
-    upsertFrozenUser,
-    showTables,
-    checkPrice,
-    buyBestItemIfAny,
-    getNextItemsToReprice,
     getListings,
-    undercutMarketPrices,
+    trackUserWasFrozen,
+    clearListing,
+    updateListing,
 ];
 
 export type Procedure = typeof PROCEDURES[number];

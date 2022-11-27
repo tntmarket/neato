@@ -152,7 +152,8 @@ async function searchShopWizard({
     ) {
         if (tooManySearches()) {
             return {
-                ...getResult(),
+                // Discard the whole search, rather than risk incorrect prices, by using irrelevant sections
+                sections: [],
                 tooManySearches: true,
             };
         }

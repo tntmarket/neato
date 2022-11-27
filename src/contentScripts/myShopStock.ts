@@ -68,7 +68,10 @@ async function setUserShopPrices(itemNameToPrice: NameToPrice): Promise<{
 }
 
 function hasMorePages(): boolean {
-    const nextPageButton = assume(getInputByValue("Next 30"));
+    const nextPageButton = getInputByValue("Next 30");
+    if (!nextPageButton) {
+        return false;
+    }
     return !nextPageButton.disabled;
 }
 

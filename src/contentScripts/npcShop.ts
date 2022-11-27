@@ -7,6 +7,7 @@ import { NpcStockData } from "@src/database/npcStock";
 import { normalDelay } from "@src/util/randomDelay";
 import { callProcedure } from "@src/background/procedure";
 import { ensureListener } from "@src/util/scriptInjection";
+import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 
 ensureListener(
     (
@@ -82,16 +83,18 @@ async function annotateShopItem(item: HTMLElement) {
     item.style.backgroundColor = "";
     item.style.opacity = "";
 
-    if (listings.length === 0) {
-        item.style.opacity = "0.5";
-        // stageItemForPricing(name);
-        return;
+    const daysToImpactfulPriceChange =
+        estimateDaysToImpactfulPriceChange(listings);
+    if (daysToImpactfulPriceChange < 0) {
+        extraInfo.style.background = `rgba(0,0,0,${Math.min(
+            // 7 days stale -> blacked out
+            -daysToImpactfulPriceChange / 7,
+            1,
+        )})`;
     }
 
-    if (daysAgo(listings[0].lastSeen) > 3) {
-        extraInfo.style.background = "lightgray";
-        extraInfo.style.opacity = "0.5";
-        // stageItemForPricing(name);
+    if (listings.length === 0) {
+        return;
     }
 
     const marketPrice = listings[0].price;
@@ -134,7 +137,7 @@ async function annotateShopItem(item: HTMLElement) {
     } else if (haggleProfit > 2000 && haggleProfitRatio > 0.6) {
         item.style.backgroundColor = "lightblue";
     } else if (haggleProfit < 1000 || haggleProfitRatio < 0.2) {
-        item.style.opacity = "0.1";
+        item.style.opacity = "0.2";
     }
 }
 
@@ -143,4 +146,5 @@ function annotateShopStock() {
 }
 
 annotateShopStock();
+setInterval(annotateShopStock, 3000);
 // overlayButtonToCommitItemsForPricing();

@@ -7,9 +7,15 @@ export function ensureListener<T extends (...args: any[]) => any>(
         console.log("Existing script is registered!");
     }
 
-    browser.runtime.onMessage.addListener((request) => {
+    browser.runtime.onMessage.addListener(async (request) => {
         console.log("REQUEST", request);
-        return handleMessage(request);
+        try {
+            const response = await handleMessage(request);
+            console.log("RESPONSE", response);
+            return response;
+        } catch (error) {
+            console.log("ERROR", error);
+        }
     });
     window.addEventListener("unload", () => {
         console.log("UNLOAD");

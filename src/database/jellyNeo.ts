@@ -23,6 +23,6 @@ export async function putJellyNeoEntries(entries: JellyNeoEntryData[]) {
     });
 }
 
-export async function getJellyNeoEntries() {
+export async function getJellyNeoEntries(): Promise<JellyNeoEntry[]> {
     return db.transaction("r", db.jellyNeo, () => db.jellyNeo.toArray());
 }
