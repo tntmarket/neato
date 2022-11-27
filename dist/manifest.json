@@ -30,10 +30,6 @@
             "js": ["js/gormball.js"]
         },
         {
-            "matches": ["https://www.neopets.com/index.phtml"],
-            "js": ["js/homePage.js"]
-        },
-        {
             "matches": ["https://www.neopets.com/login*"],
             "js": ["js/loginPage.js"]
         },

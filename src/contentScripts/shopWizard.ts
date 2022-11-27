@@ -40,7 +40,7 @@ async function askForAnotherSection(): Promise<void> {
     await anticipateNewResults;
 }
 
-async function waitForResultsToChange(timeout = 2222): Promise<void> {
+async function waitForResultsToChange(timeout = 1111): Promise<void> {
     const shopWizardFormResults = await waitForElementToExist(
         "#shopWizardFormResults",
     );
@@ -48,11 +48,12 @@ async function waitForResultsToChange(timeout = 2222): Promise<void> {
         const observer = new MutationObserver(async () => {
             if (shopWizardFormResults.innerText.includes("Searching for:")) {
                 observer.disconnect();
+                clearTimeout(abortionTimeout);
                 resolve();
             }
         });
 
-        setTimeout(() => {
+        const abortionTimeout = setTimeout(() => {
             observer.disconnect();
             resolve();
         }, timeout);
@@ -66,7 +67,7 @@ async function waitForResultsToChange(timeout = 2222): Promise<void> {
 }
 
 async function searchItem(itemName: string): Promise<void> {
-    const waitForInitialResults = waitForResultsToChange();
+    const waitForInitialResults = waitForResultsToChange(11111);
 
     const itemInput = assume(
         document.querySelector<HTMLInputElement>("#shopwizard"),
@@ -144,7 +145,6 @@ async function searchShopWizard({
     let cheapestPrice = 1_000_000;
     const sections: { [section: number]: ListingData[] } = {};
     await searchItem(itemName);
-
     for (
         let requestNumber = 1;
         requestNumber < maxRequests;
@@ -156,6 +156,11 @@ async function searchShopWizard({
                 sections: [],
                 tooManySearches: true,
             };
+        }
+        const resubmitButton =
+            document.querySelector<HTMLElement>("#resubmitWizard");
+        if (!resubmitButton) {
+            debugger;
         }
 
         const listings = scrapeSection();

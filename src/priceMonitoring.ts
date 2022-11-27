@@ -4,6 +4,17 @@ import { ljs } from "@src/util/logging";
 import { db } from "@src/database/databaseSchema";
 import { getNpcStock } from "@src/database/npcStock";
 import { getJellyNeoEntries } from "@src/database/jellyNeo";
+import {
+    getAllStockedItems,
+    getCurrentShopStock,
+} from "@src/database/myShopStock";
+
+type RankingResult = {
+    itemName: string;
+    price1: number;
+    price2: number;
+    daysUntilStale: number;
+};
 
 export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
     const allItemNames = new Set(
@@ -12,18 +23,16 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
         ),
     );
 
-    const stockedItems = await getNpcStock();
-    stockedItems.forEach((stock) => allItemNames.add(stock.itemName));
+    const myStockedItems = await getAllStockedItems();
+    myStockedItems.forEach((stock) => allItemNames.add(stock.itemName));
+
+    const npcStockItems = await getNpcStock();
+    npcStockItems.forEach((stock) => allItemNames.add(stock.itemName));
 
     const neoJellyItems = await getJellyNeoEntries();
     neoJellyItems.forEach((stock) => allItemNames.add(stock.itemName));
 
-    const rankingResults: {
-        itemName: string;
-        price1: number;
-        price2: number;
-        daysUntilStale: number;
-    }[] = [];
+    const rankingResults: RankingResult[] = [];
 
     await Promise.all(
         [...allItemNames].map(async (itemName) => {
@@ -37,31 +46,33 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
                     itemName,
                     price1: 0,
                     price2: 0,
-                    daysUntilStale: -999,
-                });
-                return;
-            }
-
-            if (listings[0].userName === "0_NOT_A_REAL_USER!") {
-                rankingResults.push({
-                    itemName,
-                    price1: 0,
-                    price2: 0,
-                    daysUntilStale: -9999,
+                    daysUntilStale: 0,
                 });
                 return;
             }
 
             const estimatedDaysUntilPriceChange =
                 estimateDaysToImpactfulPriceChange(listings);
-            const daysUntilPriceIsTooStale =
-                estimatedDaysUntilPriceChange - daysAgo(listings[0].lastSeen);
+
+            const currentShopStock = await getCurrentShopStock(itemName);
+            if (currentShopStock) {
+                rankingResults.push({
+                    itemName,
+                    price1: listings[0].price,
+                    price2: listings[1]?.price,
+                    // Always keep our shop inventory at least 3 days fresh
+                    daysUntilStale: 1 - daysAgo(listings[0].lastSeen),
+                });
+                return;
+            }
 
             rankingResults.push({
                 itemName,
                 price1: listings[0].price,
                 price2: listings[1]?.price,
-                daysUntilStale: daysUntilPriceIsTooStale,
+                daysUntilStale:
+                    estimatedDaysUntilPriceChange -
+                    daysAgo(listings[0].lastSeen),
             });
         }),
     );
@@ -80,12 +91,13 @@ export function estimateDaysToImpactfulPriceChange(
     listings: Listing[],
 ): number {
     if (listings.length === 0) {
-        return -7;
+        return 0;
     }
 
     const marketPrice = listings[0].price;
 
     return (
+        7 +
         // Wait longer to re-check junk
         30 * likelyToStayJunk(marketPrice) +
         // Wait longer to re-check expensive stuff

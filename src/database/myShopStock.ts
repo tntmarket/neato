@@ -26,6 +26,12 @@ export function getCurrentShopStock(itemName: string): Promise<number> {
     });
 }
 
+export function getAllStockedItems(): Promise<StockedItem[]> {
+    return db.transaction("r", db.myShopStock, async () => {
+        return db.myShopStock.toArray();
+    });
+}
+
 export function recordPurchase(itemName: string): Promise<void> {
     return db.transaction("rw", db.myShopStock, async () => {
         let stockItem = await db.myShopStock.where({ itemName }).first();

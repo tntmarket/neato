@@ -11,6 +11,7 @@ import { getJsonSetting } from "@src/util/localStorage";
 import { getNextItemsToReprice } from "@src/priceMonitoring";
 import { getListings } from "@src/database/listings";
 import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
+import { useAccounts } from "@src/accounts";
 import browser from "webextension-polyfill";
 
 let latestAutomationSessionId = 0;
@@ -89,31 +90,45 @@ async function cycleThroughShopsUntilNoProfitableItems(
     return null;
 }
 
-async function repriceStalestItems() {
-    const itemsToReprice = await getNextItemsToReprice(50);
+async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
+    const itemsToReprice = await getNextItemsToReprice(20);
     if (itemsToReprice.length === 0) {
-        return;
+        return {};
     }
 
     for (const item of itemsToReprice) {
         console.log("Repricing ", item);
         const priceBefore = await getListings(item);
         const { tooManySearches } = await checkPrice(item);
+        if (tooManySearches) {
+            return { tooManySearches };
+        }
+
         const priceAfter = await getListings(item);
         console.log(
             `${priceBefore[0]?.price}, ${priceBefore[1]?.price} => ${priceAfter[0]?.price}, ${priceAfter[1]?.price}`,
         );
-
-        if (tooManySearches) {
-            return;
-        }
     }
+
+    return {};
 }
 
-async function alternateBetweenPriceCheckingAndBuying(shopIds: number[]) {
-    // await undercutMarketPrices();
-    await repriceStalestItems();
-    // await cycleThroughShopsUntilNoProfitableItems(shopIds);
+async function restockAndReprice(
+    loggedIntoMainAccount: boolean,
+    shopIds: number[],
+    switchAccount: (accountId: number) => Promise<void>,
+    switchToUnbannedAccount: () => Promise<boolean>,
+) {
+    console.log("RESTOCK");
+    if (loggedIntoMainAccount) {
+        // await cycleThroughShopsUntilNoProfitableItems(shopIds);
+        // await undercutMarketPrices();
+    }
+
+    const { tooManySearches } = await repriceStalestItems();
+    if (tooManySearches) {
+        await switchToUnbannedAccount();
+    }
 }
 
 const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15]);
@@ -122,6 +137,13 @@ const isAutomatingSetting = getJsonSetting("isAutomating", false);
 export function ControlPanel() {
     const [shopIds, setShopIds] = useState(shopIdsSetting.get());
     const [isAutomating, setIsAutomating] = useState(false);
+
+    const {
+        loggedIntoMainAccount,
+        switchAccount,
+        switchToUnbannedAccount,
+        accountsUI,
+    } = useAccounts();
 
     useEffect(() => {
         browser.runtime.onMessage.addListener(async (request, sender) => {
@@ -143,15 +165,22 @@ export function ControlPanel() {
 
     useEffect(() => {
         if (isAutomating) {
-            alternateBetweenPriceCheckingAndBuying(shopIds)
+            restockAndReprice(
+                loggedIntoMainAccount,
+                shopIds,
+                switchAccount,
+                switchToUnbannedAccount,
+            )
                 .catch((error) => {
                     console.log(error);
                 })
                 .finally(() => {
                     setIsAutomating(false);
                 });
+        } else {
+            setIsAutomating(true);
         }
-    }, [shopIds, isAutomating]);
+    }, [isAutomating]);
 
     return (
         <div className={`bg-base-100 ${css.controlPanel}`}>
@@ -174,6 +203,7 @@ export function ControlPanel() {
                     shopIdsSetting.set(shopIds);
                 }}
             />
+            {accountsUI}
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { assume } from "@src/util/typeAssertions";
 import { normalDelay } from "@src/util/randomDelay";
 import { getDarkestPixel } from "@src/captcha";
 import browser from "webextension-polyfill";
+import { ensureListener } from "@src/util/scriptInjection";
 
 export type HaggleDetails = {
     itemName: string;
@@ -26,7 +27,7 @@ export type HaggleSituation =
 
 const pixelToClick = highlightPixel();
 
-browser.runtime.onMessage.addListener(
+ensureListener(
     (
         request:
             | { action: "MAKE_HAGGLE_OFFER"; offer: number }
@@ -79,7 +80,7 @@ async function highlightPixel(): Promise<{ x: number; y: number }> {
     pointer.style.pointerEvents = "none";
     document.body.append(pointer);
 
-    return { x, y };
+    return { x: clickX, y: clickY };
 }
 
 async function makeHaggleOffer(offer: number) {

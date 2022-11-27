@@ -7,10 +7,7 @@ import {
 } from "@src/database/myShopStock";
 import { getListings, Listing } from "@src/database/listings";
 import { NameToPrice } from "@src/contentScripts/myShopStock";
-import { checkPrice } from "@src/autoRestock/priceChecking";
-import { daysAgo } from "@src/util/dateTime";
 import { normalDelay, sleep } from "@src/util/randomDelay";
-import { ljs } from "@src/util/logging";
 import { waitForTabStatus } from "@src/util/tabControl";
 
 function myShopStockUrl(page: number): string {
@@ -124,34 +121,15 @@ function lowestPriceIsSelf(listings: Listing[]) {
     return listings[0].userName === "kraaab";
 }
 
-const MAX_STALENESS_OF_SHOP_STOCK = 1;
-
 async function getUnderCutPrice(
     itemName: string,
     price: number,
-): Promise<{ newPrice: number; tooManySearches?: true }> {
-    let listings = await getListings(itemName);
+): Promise<number> {
+    const listings = await getListings(itemName);
 
-    if (
-        listings.length === 0 ||
-        daysAgo(listings[0].lastSeen) > MAX_STALENESS_OF_SHOP_STOCK
-    ) {
-        if (listings.length === 0) {
-            console.log(`${itemName} is unpriced. Pricing now...`);
-        } else {
-            console.log(
-                `${itemName} is ${daysAgo(
-                    listings[0].lastSeen,
-                )} days old. Pricing now...`,
-            );
-        }
-
-        const { tooManySearches } = await checkPrice(itemName);
-
-        listings = await getListings(itemName);
-        if (tooManySearches) {
-            return { newPrice: price, tooManySearches };
-        }
+    if (listings.length === 0) {
+        console.log(`Don't know the price of ${itemName} yet`);
+        return price;
     }
 
     const marketPrice = getMarketPriceExcludingSelf(listings);
@@ -159,10 +137,10 @@ async function getUnderCutPrice(
 
     if (price > 0 && price <= underCutPrice) {
         // console.log(`${itemName} already beats market price ${marketPrice}`);
-        return { newPrice: price };
+        return price;
     }
 
-    return { newPrice: underCutPrice };
+    return underCutPrice;
 }
 
 export async function undercutMarketPrices(): Promise<void> {
@@ -173,13 +151,7 @@ export async function undercutMarketPrices(): Promise<void> {
 
     const itemNameToPrice: NameToPrice = {};
     for (const { itemName, price } of allStockedItems) {
-        const { newPrice, tooManySearches } = await getUnderCutPrice(
-            itemName,
-            price,
-        );
-        if (tooManySearches) {
-            break;
-        }
+        const newPrice = await getUnderCutPrice(itemName, price);
         if (newPrice !== price) {
             console.log(`Updating ${itemName} from ${price} => ${newPrice}`);
             itemNameToPrice[itemName] = newPrice;

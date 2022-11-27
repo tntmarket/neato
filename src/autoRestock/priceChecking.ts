@@ -17,6 +17,10 @@ export async function checkPrice(
         abortIfCheaperThan: 1000,
     });
 
+    if (tooManySearches) {
+        return { tooManySearches };
+    }
+
     for (const listings of sections) {
         await upsertListingsSection(itemName, listings);
     }
@@ -25,7 +29,7 @@ export async function checkPrice(
 
     await clearAnyInvalidListingsInFront(itemName);
 
-    return { tooManySearches };
+    return {};
 }
 
 // If user X is the cheapest, and then their section is cleared out,

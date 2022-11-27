@@ -9,7 +9,12 @@ import { waitForTabStatus } from "@src/util/tabControl";
 import { sleep } from "@src/util/randomDelay";
 
 export async function getShopWizardTab(): Promise<Tabs.Tab> {
-    const tabs = await browser.tabs.query({ url: shopWizardUrl });
+    const tabs = await browser.tabs.query({
+        url: [
+            shopWizardUrl,
+            "https://www.neopets.com/*destination=%2Fmarket.phtml%3Ftype%3Dwizard",
+        ],
+    });
     const tab = tabs[0];
     if (tab) {
         await browser.tabs.reload(tab.id, { bypassCache: true });
@@ -25,15 +30,12 @@ export async function searchShopWizard(
     const tab = await getShopWizardTab();
     const tabId = assume(tab.id);
 
+    // ensure script injected
     await waitForTabStatus(tabId, "complete");
-    await ensureScriptInjected();
+    await sleep(100);
 
     return browser.tabs.sendMessage(tabId, {
         action: "SEARCH_SHOP_WIZARD",
         ...request,
     });
-}
-
-async function ensureScriptInjected() {
-    await sleep(500);
 }
