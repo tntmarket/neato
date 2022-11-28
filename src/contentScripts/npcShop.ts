@@ -1,11 +1,10 @@
 import { assume } from "@src/util/typeAssertions";
 import { $, $All } from "@src/util/domHelpers";
 import { getListings } from "@src/database/listings";
-import { daysAgo } from "@src/util/dateTime";
 import { openLink } from "@src/util/navigationHelpers";
 import { NpcStockData } from "@src/database/npcStock";
 import { normalDelay } from "@src/util/randomDelay";
-import { callProcedure } from "@src/background/procedure";
+import { callProcedure } from "@src/controlPanel/procedure";
 import { ensureListener } from "@src/util/scriptInjection";
 import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 

@@ -2,7 +2,6 @@ import { $, $All } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import { normalDelay } from "@src/util/randomDelay";
 import { getDarkestPixel } from "@src/captcha";
-import browser from "webextension-polyfill";
 import { ensureListener } from "@src/util/scriptInjection";
 
 export type HaggleDetails = {
@@ -57,6 +56,11 @@ function clickCoordinate(x: number, y: number) {
 }
 
 async function highlightPixel(): Promise<{ x: number; y: number }> {
+    const situation = await getHaggleSituation();
+    if (situation.status !== "HAGGLING") {
+        return { x: 0, y: 0 };
+    }
+
     document.body.style.overflow = "hidden";
     const image = assume($<HTMLImageElement>('input[type="image"]'));
 
@@ -66,8 +70,8 @@ async function highlightPixel(): Promise<{ x: number; y: number }> {
     ]);
 
     const captchaCoordinates = image.getBoundingClientRect();
-    const clickX = captchaCoordinates.left + x;
-    const clickY = captchaCoordinates.top + y;
+    const clickX = captchaCoordinates.left + x + 3;
+    const clickY = captchaCoordinates.top + y + 3;
 
     const pointer = document.createElement("div");
     pointer.style.position = "absolute";

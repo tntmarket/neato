@@ -1,12 +1,7 @@
-import { normalDelay, sleep } from "@src/util/randomDelay";
+import { normalDelay } from "@src/util/randomDelay";
 import { assume } from "@src/util/typeAssertions";
 import { ListingData } from "@src/database/listings";
-import {
-    $,
-    $All,
-    getInputByValue,
-    waitForElementToExist,
-} from "@src/util/domHelpers";
+import { $, $All, waitForElementToExist } from "@src/util/domHelpers";
 import { getSection } from "@src/shopWizardSection";
 import { ensureListener } from "@src/util/scriptInjection";
 

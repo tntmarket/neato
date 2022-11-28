@@ -1,13 +1,9 @@
 import { getListings, Listing } from "@src/database/listings";
 import { daysAgo } from "@src/util/dateTime";
 import { ljs } from "@src/util/logging";
-import { db } from "@src/database/databaseSchema";
 import { getNpcStock } from "@src/database/npcStock";
 import { getJellyNeoEntries } from "@src/database/jellyNeo";
-import {
-    getAllStockedItems,
-    getCurrentShopStock,
-} from "@src/database/myShopStock";
+import { getAllStockedItems } from "@src/database/myShopStock";
 
 type RankingResult = {
     itemName: string;
@@ -16,52 +12,64 @@ type RankingResult = {
     daysUntilStale: number;
 };
 
+function itemNameSet(items: { itemName: string }[]) {
+    return new Set(items.map((stock) => stock.itemName));
+}
+
 export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
-    const allItemNames = new Set(
-        await db.transaction("r", db.listings, () =>
-            db.listings.orderBy("itemName").uniqueKeys(),
-        ),
-    );
+    const itemsToMonitor = await getJellyNeoEntries();
+    const itemNamesToMonitor = itemNameSet(itemsToMonitor);
 
     const myStockedItems = await getAllStockedItems();
-    myStockedItems.forEach((stock) => allItemNames.add(stock.itemName));
+    const myStockedItemNames = itemNameSet(myStockedItems);
+    myStockedItemNames.forEach((itemName) => itemNamesToMonitor.add(itemName));
 
     const npcStockItems = await getNpcStock();
-    npcStockItems.forEach((stock) => allItemNames.add(stock.itemName));
-
-    const neoJellyItems = await getJellyNeoEntries();
-    neoJellyItems.forEach((stock) => allItemNames.add(stock.itemName));
+    const npcStockItemNames = itemNameSet(npcStockItems);
+    npcStockItemNames.forEach((itemName) => itemNamesToMonitor.add(itemName));
 
     const rankingResults: RankingResult[] = [];
 
     await Promise.all(
-        [...allItemNames].map(async (itemName) => {
-            if (typeof itemName !== "string") {
-                throw new Error(`${itemName.toString()} is not an item name`);
-            }
+        [...itemNamesToMonitor].map(async (itemName) => {
             const listings = await getListings(itemName, 100);
 
             if (listings.length === 0) {
-                rankingResults.push({
-                    itemName,
-                    price1: 0,
-                    price2: 0,
-                    daysUntilStale: 0,
-                });
+                if (myStockedItemNames.has(itemName)) {
+                    rankingResults.push({
+                        itemName,
+                        price1: 0,
+                        price2: 0,
+                        daysUntilStale: -999, // always prioritize putting all our items on sale
+                    });
+                } else if (npcStockItemNames.has(itemName)) {
+                    rankingResults.push({
+                        itemName,
+                        price1: 0,
+                        price2: 0,
+                        daysUntilStale: -99, // always prioritize price checking never-seen-before npc items
+                    });
+                } else {
+                    rankingResults.push({
+                        itemName,
+                        price1: 0,
+                        price2: 0,
+                        daysUntilStale: 0,
+                    });
+                }
                 return;
             }
 
             const estimatedDaysUntilPriceChange =
                 estimateDaysToImpactfulPriceChange(listings);
 
-            const currentShopStock = await getCurrentShopStock(itemName);
-            if (currentShopStock) {
+            if (myStockedItemNames.has(itemName)) {
                 rankingResults.push({
                     itemName,
                     price1: listings[0].price,
                     price2: listings[1]?.price,
-                    // Always keep our shop inventory at least 3 days fresh
-                    daysUntilStale: 1 - daysAgo(listings[0].lastSeen),
+                    // Always keep our shop inventory at least 2 days fresh
+                    daysUntilStale: 2 - daysAgo(listings[0].lastSeen),
                 });
                 return;
             }

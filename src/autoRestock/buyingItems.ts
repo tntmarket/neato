@@ -98,7 +98,7 @@ function isWorth({
     return (
         futureHaggleProfit > 2000 &&
         futureHaggleProfitRatio > 0.5 &&
-        daysToImpactfulPriceChange <= 0
+        daysToImpactfulPriceChange > 0
     );
 }
 

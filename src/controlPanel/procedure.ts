@@ -1,10 +1,10 @@
-import { setItemMonitorList } from "@src/background/jellyNeo";
 import {
     clearListing,
     getListings,
     updateListing,
 } from "@src/database/listings";
 import { trackUserWasFrozen } from "@src/database/user";
+import { setItemMonitorList } from "@src/database/jellyNeo";
 
 const PROCEDURES = [
     setItemMonitorList,
@@ -24,6 +24,7 @@ export function getProcedure(request: { procedureId: number }): Procedure {
     return procedure;
 }
 
+/* Allows content scripts to query the database */
 export function callProcedure<F extends Procedure>(
     procedure: F,
     ...args: F extends (...args: infer P) => any ? P : never[]

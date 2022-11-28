@@ -26,3 +26,10 @@ export async function putJellyNeoEntries(entries: JellyNeoEntryData[]) {
 export async function getJellyNeoEntries(): Promise<JellyNeoEntry[]> {
     return db.transaction("r", db.jellyNeo, () => db.jellyNeo.toArray());
 }
+
+export async function setItemMonitorList(
+    itemsFromJellyNeo: JellyNeoEntryData[],
+): Promise<JellyNeoEntry[]> {
+    await putJellyNeoEntries(itemsFromJellyNeo);
+    return getJellyNeoEntries();
+}

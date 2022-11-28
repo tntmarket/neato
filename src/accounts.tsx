@@ -11,9 +11,13 @@ export type LoginInfo = {
     password: string;
 };
 
+const accountIdSetting = getJsonSetting<number>("accountId", 0);
+
 const loginInfoSetting = getJsonSetting<LoginInfo[]>("credentials", [
     { username: "bob", password: "123" },
 ]);
+
+const banTimesSetting = getJsonSetting<BanTimes>("banTimes", {});
 
 async function getLogoutTab(): Promise<Tabs.Tab> {
     const tabs = await browser.tabs.query({
@@ -45,13 +49,16 @@ export type BanTimes = {
 };
 
 export function useAccounts(): UseAccounts {
-    const [loggedInAccountId, setLoggedInAccountId] = useState(0);
+    const [loggedInAccountId, setLoggedInAccountId] = useState(
+        accountIdSetting.get(),
+    );
     const [credentials, setCredentials] = useState(loginInfoSetting.get());
-    const [banTimes, setBanTimes] = useState<BanTimes>({});
+    const [banTimes, setBanTimes] = useState<BanTimes>(banTimesSetting.get());
 
     async function switchAccount(accountId: number) {
         const account = credentials[accountId];
         setLoggedInAccountId(accountId);
+        accountIdSetting.set(accountId);
         const tab = await getLogoutTab();
         const tabId = assume(tab.id);
 
@@ -72,6 +79,7 @@ export function useAccounts(): UseAccounts {
         console.log(`${justBannedAccount.username} was just banned`);
         const nextBanTimes = { ...banTimes, [loggedInAccountId]: Date.now() };
         setBanTimes(nextBanTimes);
+        banTimesSetting.set(nextBanTimes);
 
         const nextAccountId = getNextUnbannedAccountId(nextBanTimes);
         if (nextAccountId) {
@@ -80,7 +88,7 @@ export function useAccounts(): UseAccounts {
         }
 
         await waitTillNextHour();
-        return switchToUnbannedAccountOrMain();
+        return false;
     }
 
     function getNextUnbannedAccountId(nextBanTimes: BanTimes): number | null {
@@ -109,16 +117,13 @@ export function useAccounts(): UseAccounts {
                     loginInfoSetting.set(credentials);
                 }}
                 loggedInAccountId={loggedInAccountId}
-                onSwitchAccount={(accountId) => {
-                    setLoggedInAccountId(accountId);
-                    switchAccount(accountId);
-                }}
+                onSwitchAccount={switchAccount}
             />
         ),
     };
 }
 
-async function waitTillNextHour(delay = 10000) {
+export async function waitTillNextHour(delay = 10000) {
     const millisInHour = 1000 * 60 * 60;
     const millisToNextHour = millisInHour - (Date.now() % millisInHour);
     console.log(`Waiting for ${millisToNextHour / 1000 / 60} mins`);

@@ -3,7 +3,7 @@ import css from "./styles.module.css";
 import { OnOffToggle } from "@src/controlPanel/OnOffToggle";
 import { SearchWizardInput } from "@src/controlPanel/SearchWizardInput";
 import { checkPrice } from "@src/autoRestock/priceChecking";
-import { getProcedure } from "@src/background/procedure";
+import { getProcedure } from "@src/controlPanel/procedure";
 import { NpcShopInput } from "@src/controlPanel/NpcShopInput";
 import { buyBestItemIfAny, BuyOutcome } from "@src/autoRestock/buyingItems";
 import { normalDelay, sleep } from "@src/util/randomDelay";
@@ -11,8 +11,9 @@ import { getJsonSetting } from "@src/util/localStorage";
 import { getNextItemsToReprice } from "@src/priceMonitoring";
 import { getListings } from "@src/database/listings";
 import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
-import { useAccounts } from "@src/accounts";
+import { useAccounts, waitTillNextHour } from "@src/accounts";
 import browser from "webextension-polyfill";
+import { quickStockItems } from "@src/contentScriptActions/quickStock";
 
 let latestAutomationSessionId = 0;
 
@@ -97,7 +98,6 @@ async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
     }
 
     for (const item of itemsToReprice) {
-        console.log("Repricing ", item);
         const priceBefore = await getListings(item);
         const { tooManySearches } = await checkPrice(item);
         if (tooManySearches) {
@@ -121,21 +121,25 @@ async function restockAndReprice(
 ) {
     console.log("RESTOCK");
     if (loggedIntoMainAccount) {
-        // await cycleThroughShopsUntilNoProfitableItems(shopIds);
-        // await undercutMarketPrices();
+        await cycleThroughShopsUntilNoProfitableItems(shopIds);
+        await quickStockItems();
+        await undercutMarketPrices();
     }
 
     const { tooManySearches } = await repriceStalestItems();
     if (tooManySearches) {
-        await switchToUnbannedAccount();
+        const unbannedAccount = await switchToUnbannedAccount();
+        if (!unbannedAccount) {
+            await waitTillNextHour();
+        }
     }
 }
 
 const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15]);
-const isAutomatingSetting = getJsonSetting("isAutomating", false);
 
 export function ControlPanel() {
     const [shopIds, setShopIds] = useState(shopIdsSetting.get());
+    const [retryInfinitely, setRetryInfinitely] = useState(false);
     const [isAutomating, setIsAutomating] = useState(false);
 
     const {
@@ -177,7 +181,7 @@ export function ControlPanel() {
                 .finally(() => {
                     setIsAutomating(false);
                 });
-        } else {
+        } else if (retryInfinitely) {
             setIsAutomating(true);
         }
     }, [isAutomating]);
@@ -185,10 +189,17 @@ export function ControlPanel() {
     return (
         <div className={`bg-base-100 ${css.controlPanel}`}>
             <OnOffToggle
+                label="Retry Infinitely"
+                checked={retryInfinitely}
+                onChange={() => {
+                    setRetryInfinitely(!retryInfinitely);
+                }}
+            />
+            <OnOffToggle
+                label="Automate"
                 checked={isAutomating}
                 onChange={() => {
                     setIsAutomating(!isAutomating);
-                    isAutomatingSetting.set(!isAutomating);
                 }}
             />
             <SearchWizardInput

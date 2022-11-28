@@ -1,7 +1,7 @@
 import { $, domLoaded } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import { extractNumber } from "@src/util/textParsing";
-import { callProcedure } from "@src/background/procedure";
+import { callProcedure } from "@src/controlPanel/procedure";
 import { trackUserWasFrozen } from "@src/database/user";
 import { clearListing, updateListing } from "@src/database/listings";
 import { ensureListener } from "@src/util/scriptInjection";

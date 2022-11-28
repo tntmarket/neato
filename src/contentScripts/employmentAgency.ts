@@ -5,7 +5,7 @@ import {
 } from "@src/pricingQueue";
 import { getListings, Listing } from "@src/database/listings";
 import { openLink } from "@src/util/navigationHelpers";
-import { callProcedure } from "@src/background/procedure";
+import { callProcedure } from "@src/controlPanel/procedure";
 
 function getFulfillPlan(quantity: number, topPrices: Listing[]) {
     const unGroupedPrices = topPrices.flatMap((price) =>

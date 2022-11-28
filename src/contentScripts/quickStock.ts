@@ -1,7 +1,8 @@
 import { assume } from "@src/util/typeAssertions";
-import { $All } from "@src/util/domHelpers";
+import { $All, getInputByValue } from "@src/util/domHelpers";
 import { getListings } from "@src/database/listings";
-import { callProcedure } from "@src/background/procedure";
+import { callProcedure } from "@src/controlPanel/procedure";
+import { ensureListener } from "@src/util/scriptInjection";
 
 $All('input[value="stock"]').forEach(async (stockButton) => {
     const itemName = assume(
@@ -16,11 +17,18 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
     if (marketPrice >= 300 || marketPrice === 0) {
         stockButton.click();
     } else {
-        const donateButton = assume(
+        const depositButton = assume(
             stockButton
                 .closest("tr")
-                ?.querySelector<HTMLInputElement>('input[value="donate"]'),
+                ?.querySelector<HTMLInputElement>('input[value="deposit"]'),
         );
-        donateButton.click();
+        depositButton.click();
+    }
+});
+
+ensureListener((request: { action: "QUICK_STOCK_ITEMS" }) => {
+    if (request.action === "QUICK_STOCK_ITEMS") {
+        const submitButton = assume(getInputByValue("Submit"));
+        submitButton.click();
     }
 });
