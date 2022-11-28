@@ -111,8 +111,8 @@ function tooManySearches() {
 
 async function searchShopWizard({
     itemName,
-    numberOfSections = 3,
-    maxRequests = 5,
+    numberOfSections = 4,
+    maxRequests = 7,
     abortIfCheaperThan = 1000,
 }: SearchShopWizard): Promise<ShopWizardResult> {
     function sectionsFound() {

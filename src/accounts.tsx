@@ -39,8 +39,10 @@ async function getLogoutTab(): Promise<Tabs.Tab> {
 
 type UseAccounts = {
     loggedIntoMainAccount: boolean;
+    currentAccountCanSearch: boolean;
     switchAccount: (accountId: number) => Promise<void>;
     switchToUnbannedAccount: () => Promise<boolean>;
+    recordBanTime: () => void;
     accountsUI: React.ReactNode;
 };
 
@@ -74,12 +76,17 @@ export function useAccounts(): UseAccounts {
         });
     }
 
-    async function switchToUnbannedAccount(): Promise<boolean> {
+    function recordBanTime(): BanTimes {
         const justBannedAccount = credentials[loggedInAccountId];
         console.log(`${justBannedAccount.username} was just banned`);
         const nextBanTimes = { ...banTimes, [loggedInAccountId]: Date.now() };
         setBanTimes(nextBanTimes);
         banTimesSetting.set(nextBanTimes);
+        return nextBanTimes;
+    }
+
+    async function switchToUnbannedAccount(): Promise<boolean> {
+        const nextBanTimes = recordBanTime();
 
         const nextAccountId = getNextUnbannedAccountId(nextBanTimes);
         if (nextAccountId !== null) {
@@ -106,6 +113,8 @@ export function useAccounts(): UseAccounts {
 
     return {
         loggedIntoMainAccount: loggedInAccountId === 0,
+        currentAccountCanSearch: isNotBanned(banTimes, loggedInAccountId),
+        recordBanTime,
         switchAccount,
         switchToUnbannedAccount,
         accountsUI: (

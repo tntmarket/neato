@@ -92,7 +92,7 @@ async function cycleThroughShopsUntilNoProfitableItems(
 }
 
 async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
-    const itemsToReprice = await getNextItemsToReprice(10);
+    const itemsToReprice = await getNextItemsToReprice(30);
     if (itemsToReprice.length === 0) {
         return {};
     }
@@ -115,30 +115,42 @@ async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
 
 async function restockAndReprice(
     loggedIntoMainAccount: boolean,
+    currentAccountCanSearch: boolean,
     shopIds: number[],
     switchAccount: (accountId: number) => Promise<void>,
     switchToUnbannedAccount: () => Promise<boolean>,
+    recordBanTime: () => void,
 ) {
+    async function repriceItems() {
+        if (currentAccountCanSearch) {
+            const { tooManySearches } = await repriceStalestItems();
+            return tooManySearches;
+        }
+        return true;
+    }
+
     if (loggedIntoMainAccount) {
         await cycleThroughShopsUntilNoProfitableItems(shopIds);
         await quickStockItems();
         await undercutMarketPrices();
+
+        const tooManySearches = await repriceItems();
+        if (tooManySearches) {
+            const unbannedAccount = await switchToUnbannedAccount();
+            if (!unbannedAccount) {
+                // If we have no accounts available, just wait instead of
+                // immediately starting another restocking run
+                return waitTillNextHour();
+            }
+        }
     }
 
-    const { tooManySearches } = await repriceStalestItems();
+    const tooManySearches = await repriceItems();
     if (tooManySearches) {
-        if (!loggedIntoMainAccount) {
-            // Interleave restocking runs in between account switches
-            return switchAccount(0);
-        }
-        // Fit in shop wizard runs in between restocking runs
-        const unbannedAccount = await switchToUnbannedAccount();
-        if (!unbannedAccount) {
-            // If we have no accounts available, just wait instead of
-            // immediately starting another restocking run
-            return waitTillNextHour();
-        }
+        recordBanTime();
     }
+    // Return to main to interleave a restocking run before the next shop wizard run
+    return switchAccount(0);
 }
 
 const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15]);
@@ -150,9 +162,11 @@ export function ControlPanel() {
 
     const {
         loggedIntoMainAccount,
+        currentAccountCanSearch,
         switchAccount,
         switchToUnbannedAccount,
         accountsUI,
+        recordBanTime,
     } = useAccounts();
 
     useEffect(() => {
@@ -177,9 +191,11 @@ export function ControlPanel() {
         if (isAutomating) {
             restockAndReprice(
                 loggedIntoMainAccount,
+                currentAccountCanSearch,
                 shopIds,
                 switchAccount,
                 switchToUnbannedAccount,
+                recordBanTime,
             )
                 .catch((error) => {
                     console.log(error);

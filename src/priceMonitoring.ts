@@ -54,7 +54,7 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
                         itemName,
                         price1: 0,
                         price2: 0,
-                        daysUntilStale: 0,
+                        daysUntilStale: -1,
                     });
                 }
                 return;
@@ -93,7 +93,7 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
 
     const stalenessBuckets: { [daysUntilStale: number]: RankingResult[] } = {};
     rankingResults.forEach((result) => {
-        const daysStale = Math.round(result.daysUntilStale);
+        const daysStale = Math.floor(result.daysUntilStale);
         if (!stalenessBuckets[daysStale]) {
             stalenessBuckets[daysStale] = [];
         }

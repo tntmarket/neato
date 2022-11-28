@@ -158,5 +158,7 @@ export async function undercutMarketPrices(): Promise<void> {
         }
     }
 
-    await setMyShopStockPrices(tabId, itemNameToPrice);
+    if (Object.keys(itemNameToPrice).length > 0) {
+        await setMyShopStockPrices(tabId, itemNameToPrice);
+    }
 }

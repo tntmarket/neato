@@ -94,11 +94,13 @@ function isWorth({
     daysToImpactfulPriceChange,
     futureHaggleProfit,
     futureHaggleProfitRatio,
+    alreadyStocked,
 }: BuyOpportunity) {
     return (
         futureHaggleProfit > 2000 &&
         futureHaggleProfitRatio > 0.5 &&
-        daysToImpactfulPriceChange > 0
+        daysToImpactfulPriceChange > 0 &&
+        alreadyStocked < 10
     );
 }
 
