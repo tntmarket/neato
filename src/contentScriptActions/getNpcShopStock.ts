@@ -89,12 +89,17 @@ export class HaggleSession {
     }
 
     async makeOffer(offer: number): Promise<void> {
-        await browser.tabs.sendMessage(this.tabId, {
+        const waitForPageToStartSpinning = waitForTabStatus(
+            this.tabId,
+            "loading",
+            10,
+        );
+        browser.tabs.sendMessage(this.tabId, {
             action: "MAKE_HAGGLE_OFFER",
             offer,
         });
 
-        await waitForTabStatus(this.tabId, "loading");
+        await waitForPageToStartSpinning;
         await ensureHaggleScriptInjected(this.tabId);
     }
 
@@ -107,5 +112,5 @@ export class HaggleSession {
 
 async function ensureHaggleScriptInjected(tabId: number) {
     await waitForTabStatus(tabId, "complete");
-    await sleep(1000);
+    await sleep(100);
 }

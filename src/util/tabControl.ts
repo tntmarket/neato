@@ -14,20 +14,32 @@ export async function ensureOneTab(url: string): Promise<Tabs.Tab> {
 export async function waitForTabStatus(
     tabId: number,
     status: "loading" | "complete",
+    pollInterval = 100,
+    timeout = 20000,
 ): Promise<void> {
     const tab = await browser.tabs.get(tabId);
     if (tab.status === status) {
         return;
     }
 
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve, reject) => {
         const pollForPageChange = setInterval(async () => {
             const tab = await browser.tabs.get(tabId);
             if (tab.status === status) {
                 clearInterval(pollForPageChange);
+                clearTimeout(timer);
                 resolve();
             }
-        }, 100);
+        }, pollInterval);
+
+        const timer = setTimeout(() => {
+            clearInterval(pollForPageChange);
+            reject(
+                new Error(
+                    `Timed out waiting for tab ${tabId} to change to ${status}`,
+                ),
+            );
+        }, timeout);
     });
 }
 
