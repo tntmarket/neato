@@ -234,6 +234,10 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         }
 
         nextOffer = await getNextOffer(situation);
+        if (nextOffer === situation.lastOffer) {
+            // Failsafe in case we get locked stuck, and the price isn't budging
+            nextOffer = situation.currentAsk;
+        }
         await session.makeOffer(nextOffer);
     }
 
