@@ -82,7 +82,7 @@ export function useAccounts(): UseAccounts {
         banTimesSetting.set(nextBanTimes);
 
         const nextAccountId = getNextUnbannedAccountId(nextBanTimes);
-        if (nextAccountId) {
+        if (nextAccountId !== null) {
             await switchAccount(nextAccountId);
             return true;
         }
