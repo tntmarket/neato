@@ -90,9 +90,23 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
     if (rankingResults.length === 0) {
         throw new Error("No items exist in the database to re-price");
     }
-    return ljs(rankingResults.slice(0, limit))
-        .filter((result) => result.daysUntilStale <= 0)
-        .map((result) => result.itemName);
+
+    const stalenessBuckets: { [daysUntilStale: number]: RankingResult[] } = {};
+    rankingResults.forEach((result) => {
+        const daysStale = Math.round(result.daysUntilStale);
+        if (!stalenessBuckets[daysStale]) {
+            stalenessBuckets[daysStale] = [];
+        }
+        stalenessBuckets[daysStale].push(result);
+    });
+    console.log(stalenessBuckets);
+
+    return ljs(
+        rankingResults
+            .slice(0, limit)
+            .filter((result) => result.daysUntilStale <= 0)
+            .map((result) => result.itemName),
+    );
 }
 
 export function estimateDaysToImpactfulPriceChange(
@@ -106,10 +120,14 @@ export function estimateDaysToImpactfulPriceChange(
 
     return (
         7 +
-        // Wait longer to re-check junk
-        30 * likelyToStayJunk(marketPrice) +
-        // Wait longer to re-check expensive stuff
-        10 * likelyToStayExpensive(marketPrice) +
+        // 60 days to check 100np items
+        // 42 days to check 200np items
+        // 18 days to check 500np items
+        60 * likelyToStayJunk(marketPrice) +
+        // 20 days to check 100000np items
+        // 14 days to check 50000np items
+        // 6 days to check 20000np items
+        20 * likelyToStayExpensive(marketPrice) +
         // Expedite if the listings are shallow
         -4 * liquidityIsShallow(listings) +
         // Expedite if it's in a price we often invest in
@@ -121,6 +139,10 @@ export function estimateDaysToImpactfulPriceChange(
 function likelyToStayJunk(marketPrice: number) {
     if (marketPrice > 1000) {
         return 0;
+    }
+
+    if (marketPrice < 100) {
+        return 1;
     }
 
     // 1   if worth 100
@@ -144,15 +166,13 @@ function liquidityIsShallow(listings: Listing[]) {
     const priceGap = listings[1].price - listings[0].price;
     const volatilityFactor = priceGap / listings[0].price;
 
-    if (priceGap < 1000 || volatilityFactor < 0.05) {
+    if (priceGap < 1000) {
         return 0;
     }
 
-    if (priceGap > 10000 && volatilityFactor > 0.4) {
-        return 1;
-    }
-
-    return 4 - Math.log10(priceGap);
+    // 1   if gap is 1000-2000, 2000-4000, 4000-8000
+    // 0.5 if gap is 1000-1500, 2000-3000, 4000-6000
+    return Math.min(volatilityFactor, 1);
 }
 
 function likelyToStayExpensive(marketPrice: number) {

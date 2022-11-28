@@ -53,6 +53,11 @@ export async function getNpcShopStock(
         action: "GET_NPC_STOCK",
     });
 
+    // Don't clobber existing entries if we temporarily get restock banned
+    if (npcStock.length === 0) {
+        return [];
+    }
+
     await addNpcStocks(shopId, npcStock);
 
     return npcStock;

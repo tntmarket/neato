@@ -74,7 +74,7 @@ export function useAccounts(): UseAccounts {
         });
     }
 
-    async function switchToUnbannedAccountOrMain(): Promise<boolean> {
+    async function switchToUnbannedAccount(): Promise<boolean> {
         const justBannedAccount = credentials[loggedInAccountId];
         console.log(`${justBannedAccount.username} was just banned`);
         const nextBanTimes = { ...banTimes, [loggedInAccountId]: Date.now() };
@@ -87,7 +87,6 @@ export function useAccounts(): UseAccounts {
             return true;
         }
 
-        await waitTillNextHour();
         return false;
     }
 
@@ -101,13 +100,14 @@ export function useAccounts(): UseAccounts {
                 return accountId;
             }
         }
+        console.error("NO ACCOUNTS LEFT", nextBanTimes, Date.now());
         return null;
     }
 
     return {
         loggedIntoMainAccount: loggedInAccountId === 0,
         switchAccount,
-        switchToUnbannedAccount: switchToUnbannedAccountOrMain,
+        switchToUnbannedAccount,
         accountsUI: (
             <CredentialsInput
                 banTimes={banTimes}
@@ -131,7 +131,7 @@ export async function waitTillNextHour(delay = 10000) {
 }
 
 export function isNotBanned(banTimes: BanTimes, accountId: number): boolean {
-    const banTime = banTimes[accountId];
+    const banTime = banTimes[accountId] || 0;
     const bannedMoreThanHourAgo = Date.now() - banTime > 1000 * 60 * 60;
     const bannedInDifferentHour =
         new Date(banTime).getHours() !== new Date().getHours();

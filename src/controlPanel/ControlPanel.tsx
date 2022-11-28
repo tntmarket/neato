@@ -106,7 +106,7 @@ async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
 
         const priceAfter = await getListings(item);
         console.log(
-            `${priceBefore[0]?.price}, ${priceBefore[1]?.price} => ${priceAfter[0]?.price}, ${priceAfter[1]?.price}`,
+            `${item}\n   ${priceBefore[0]?.price}, ${priceBefore[1]?.price}\n   ${priceAfter[0]?.price}, ${priceAfter[1]?.price}`,
         );
     }
 
@@ -116,7 +116,6 @@ async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
 async function restockAndReprice(
     loggedIntoMainAccount: boolean,
     shopIds: number[],
-    switchAccount: (accountId: number) => Promise<void>,
     switchToUnbannedAccount: () => Promise<boolean>,
 ) {
     console.log("RESTOCK");
@@ -142,12 +141,8 @@ export function ControlPanel() {
     const [retryInfinitely, setRetryInfinitely] = useState(false);
     const [isAutomating, setIsAutomating] = useState(false);
 
-    const {
-        loggedIntoMainAccount,
-        switchAccount,
-        switchToUnbannedAccount,
-        accountsUI,
-    } = useAccounts();
+    const { loggedIntoMainAccount, switchToUnbannedAccount, accountsUI } =
+        useAccounts();
 
     useEffect(() => {
         browser.runtime.onMessage.addListener(async (request, sender) => {
@@ -172,7 +167,6 @@ export function ControlPanel() {
             restockAndReprice(
                 loggedIntoMainAccount,
                 shopIds,
-                switchAccount,
                 switchToUnbannedAccount,
             )
                 .catch((error) => {

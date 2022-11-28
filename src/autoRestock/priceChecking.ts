@@ -25,7 +25,7 @@ export async function checkPrice(
         await upsertListingsSection(itemName, listings);
     }
 
-    ljs(await getListings(itemName, 3));
+    // ljs(await getListings(itemName, 3));
 
     await clearAnyInvalidListingsInFront(itemName);
 
