@@ -92,7 +92,7 @@ async function cycleThroughShopsUntilNoProfitableItems(
 }
 
 async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
-    const itemsToReprice = await getNextItemsToReprice(20);
+    const itemsToReprice = await getNextItemsToReprice(10);
     if (itemsToReprice.length === 0) {
         return {};
     }
@@ -116,9 +116,9 @@ async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
 async function restockAndReprice(
     loggedIntoMainAccount: boolean,
     shopIds: number[],
+    switchAccount: (accountId: number) => Promise<void>,
     switchToUnbannedAccount: () => Promise<boolean>,
 ) {
-    console.log("RESTOCK");
     if (loggedIntoMainAccount) {
         await cycleThroughShopsUntilNoProfitableItems(shopIds);
         await quickStockItems();
@@ -127,9 +127,16 @@ async function restockAndReprice(
 
     const { tooManySearches } = await repriceStalestItems();
     if (tooManySearches) {
+        if (!loggedIntoMainAccount) {
+            // Interleave restocking runs in between account switches
+            return switchAccount(0);
+        }
+        // Fit in shop wizard runs in between restocking runs
         const unbannedAccount = await switchToUnbannedAccount();
         if (!unbannedAccount) {
-            await waitTillNextHour();
+            // If we have no accounts available, just wait instead of
+            // immediately starting another restocking run
+            return waitTillNextHour();
         }
     }
 }
@@ -141,8 +148,12 @@ export function ControlPanel() {
     const [retryInfinitely, setRetryInfinitely] = useState(false);
     const [isAutomating, setIsAutomating] = useState(false);
 
-    const { loggedIntoMainAccount, switchToUnbannedAccount, accountsUI } =
-        useAccounts();
+    const {
+        loggedIntoMainAccount,
+        switchAccount,
+        switchToUnbannedAccount,
+        accountsUI,
+    } = useAccounts();
 
     useEffect(() => {
         browser.runtime.onMessage.addListener(async (request, sender) => {
@@ -167,6 +178,7 @@ export function ControlPanel() {
             restockAndReprice(
                 loggedIntoMainAccount,
                 shopIds,
+                switchAccount,
                 switchToUnbannedAccount,
             )
                 .catch((error) => {
