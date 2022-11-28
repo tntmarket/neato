@@ -137,9 +137,20 @@ async function searchShopWizard({
         };
     }
 
+    function recordScrapedListings() {
+        const listings = scrapeSection();
+
+        if (listings.length > 0) {
+            sections[getSection(listings[0].userName)] = listings;
+            cheapestPrice = Math.min(cheapestPrice, listings[0].price);
+        }
+    }
+
     let cheapestPrice = 1_000_000;
     const sections: { [section: number]: ListingData[] } = {};
     await searchItem(itemName);
+    recordScrapedListings();
+
     for (
         let requestNumber = 1;
         requestNumber < maxRequests;
@@ -158,24 +169,17 @@ async function searchShopWizard({
             debugger;
         }
 
-        const listings = scrapeSection();
-
-        if (listings.length > 0) {
-            sections[getSection(listings[0].userName)] = listings;
-            cheapestPrice = Math.min(cheapestPrice, listings[0].price);
-        }
-
         if (sectionsFound() >= numberOfSections) {
-            return getResult();
+            break;
         }
 
         if (cheapestPrice < abortIfCheaperThan) {
-            return getResult();
+            break;
         }
 
-        await normalDelay(555);
-
         await askForAnotherSection();
+        await normalDelay(444);
+        recordScrapedListings();
     }
 
     await newSearch();
