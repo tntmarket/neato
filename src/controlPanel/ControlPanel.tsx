@@ -93,7 +93,7 @@ async function cycleThroughShopsUntilNoProfitableItems(
 }
 
 async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
-    const itemsToReprice = await getNextItemsToReprice(30);
+    const itemsToReprice = await getNextItemsToReprice(20);
     if (itemsToReprice.length === 0) {
         return {};
     }
@@ -125,7 +125,9 @@ async function restockAndReprice(
     async function repriceItems() {
         if (currentAccountCanSearch) {
             const { tooManySearches } = await repriceStalestItems();
-            recordBanTime();
+            if (tooManySearches) {
+                recordBanTime();
+            }
             return tooManySearches;
         }
         return true;
