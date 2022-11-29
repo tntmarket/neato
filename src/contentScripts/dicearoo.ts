@@ -44,6 +44,10 @@ async function advanceForward(
     if (assume($("#content")).innerText.includes("SO BORED")) {
         clearInterval(retryInterval);
     }
+    // Only play on main account
+    if (!$(".user")?.innerText?.includes("kraaab")) {
+        clearInterval(retryInterval);
+    }
 }
 
 advanceForward();

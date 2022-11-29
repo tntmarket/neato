@@ -86,9 +86,7 @@ export function useAccounts(): UseAccounts {
     }
 
     async function switchToUnbannedAccount(): Promise<boolean> {
-        const nextBanTimes = recordBanTime();
-
-        const nextAccountId = getNextUnbannedAccountId(nextBanTimes);
+        const nextAccountId = getNextUnbannedAccountId();
         if (nextAccountId !== null) {
             await switchAccount(nextAccountId);
             return true;
@@ -97,17 +95,22 @@ export function useAccounts(): UseAccounts {
         return false;
     }
 
-    function getNextUnbannedAccountId(nextBanTimes: BanTimes): number | null {
+    function getNextUnbannedAccountId(): number | null {
         for (
             let accountId = 0;
             accountId < credentials.length;
             accountId += 1
         ) {
-            if (isNotBanned(nextBanTimes, accountId)) {
+            if (
+                isNotBanned(banTimes, accountId) &&
+                // assume the current account is already banned,
+                // but just not reflected in state yet
+                accountId !== loggedInAccountId
+            ) {
                 return accountId;
             }
         }
-        console.error("NO ACCOUNTS LEFT", nextBanTimes, Date.now());
+        console.error("NO ACCOUNTS LEFT", banTimes, Date.now());
         return null;
     }
 

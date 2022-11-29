@@ -23,6 +23,14 @@ export async function putJellyNeoEntries(entries: JellyNeoEntryData[]) {
     });
 }
 
+export async function getJellyNeoEntry(
+    itemName: string,
+): Promise<JellyNeoEntry | undefined> {
+    return db.transaction("r", db.jellyNeo, () =>
+        db.jellyNeo.where({ itemName }).first(),
+    );
+}
+
 export async function getJellyNeoEntries(): Promise<JellyNeoEntry[]> {
     return db.transaction("r", db.jellyNeo, () => db.jellyNeo.toArray());
 }

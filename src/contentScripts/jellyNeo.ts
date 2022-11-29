@@ -1,4 +1,4 @@
-import { $All, domLoaded } from "@src/util/domHelpers";
+import { $, $All, domLoaded, getInputByValue } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import { l } from "@src/util/logging";
 import { JellyNeoEntryData, setItemMonitorList } from "@src/database/jellyNeo";
@@ -18,6 +18,15 @@ function rowToEntry(row: HTMLElement): JellyNeoEntryData {
 
 async function addItemsToMonitorList() {
     await domLoaded();
+
+    const showPricesCheckbox = assume(
+        $<HTMLInputElement>('input[name="show_prices"]'),
+    );
+    if (!showPricesCheckbox.checked) {
+        showPricesCheckbox.click();
+        getInputByValue("Update")?.click();
+        return;
+    }
 
     const response = await callProcedure(
         setItemMonitorList,

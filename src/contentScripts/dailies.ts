@@ -47,6 +47,10 @@ async function trudysSurprise() {
     );
 }
 
+async function bankInterest() {
+    assume(getInputByValue("Spin, spin, spin!")).click();
+}
+
 async function fruitMachine() {
     assume(getInputByValue("Spin, spin, spin!")).click();
 }
@@ -184,8 +188,9 @@ async function winterKiosk() {
 
 const linkToRoutine = {
     "/trudys_surprise.phtml": trudysSurprise,
+    "/bank.phtml": bankInterest,
     "/desert/fruit/index.phtml": fruitMachine,
-    "/halloween/gravedanger/index.phtml": graveDanger,
+    "/halloween/gravedanger/": graveDanger,
     "/worlds/geraptiku/tomb.phtml": desertedTomb,
     "/desert/shrine.phtml": coltzansShrine,
     "/halloween/applebobbing.phtml": appleBobbing,

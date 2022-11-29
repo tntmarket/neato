@@ -4,7 +4,7 @@ import {
     updateListing,
 } from "@src/database/listings";
 import { trackUserWasFrozen } from "@src/database/user";
-import { setItemMonitorList } from "@src/database/jellyNeo";
+import { getJellyNeoEntry, setItemMonitorList } from "@src/database/jellyNeo";
 
 const PROCEDURES = [
     setItemMonitorList,
@@ -12,6 +12,7 @@ const PROCEDURES = [
     trackUserWasFrozen,
     clearListing,
     updateListing,
+    getJellyNeoEntry,
 ];
 
 export type Procedure = typeof PROCEDURES[number];

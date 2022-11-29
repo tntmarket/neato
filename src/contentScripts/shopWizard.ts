@@ -91,9 +91,9 @@ function scrapeSection(): ListingData[] {
 
 export type SearchShopWizard = {
     itemName: string;
-    numberOfSections?: number;
-    maxRequests?: number;
-    abortIfCheaperThan?: number;
+    numberOfSections: number;
+    maxRequests: number;
+    abortIfCheaperThan: number;
 };
 
 export type ShopWizardResult = {
@@ -111,9 +111,9 @@ function tooManySearches() {
 
 async function searchShopWizard({
     itemName,
-    numberOfSections = 4,
-    maxRequests = 7,
-    abortIfCheaperThan = 1000,
+    numberOfSections,
+    maxRequests,
+    abortIfCheaperThan,
 }: SearchShopWizard): Promise<ShopWizardResult> {
     function sectionsFound() {
         return Object.keys(sections).length;
@@ -162,11 +162,6 @@ async function searchShopWizard({
                 sections: [],
                 tooManySearches: true,
             };
-        }
-        const resubmitButton =
-            document.querySelector<HTMLElement>("#resubmitWizard");
-        if (!resubmitButton) {
-            debugger;
         }
 
         if (sectionsFound() >= numberOfSections) {

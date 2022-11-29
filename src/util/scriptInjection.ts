@@ -14,7 +14,7 @@ export function ensureListener<T extends (...args: any[]) => any>(
             console.log("RESPONSE", response);
             return response;
         } catch (error) {
-            console.log("ERROR", error);
+            console.error("ERROR", error);
         }
     });
     window.addEventListener("unload", () => {

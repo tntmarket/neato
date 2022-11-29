@@ -14,6 +14,7 @@ import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
 import { useAccounts, waitTillNextHour } from "@src/accounts";
 import browser from "webextension-polyfill";
 import { quickStockItems } from "@src/contentScriptActions/quickStock";
+import { ListingBrowser } from "@src/controlPanel/ListingBrowser";
 
 let latestAutomationSessionId = 0;
 
@@ -124,6 +125,7 @@ async function restockAndReprice(
     async function repriceItems() {
         if (currentAccountCanSearch) {
             const { tooManySearches } = await repriceStalestItems();
+            recordBanTime();
             return tooManySearches;
         }
         return true;
@@ -140,17 +142,14 @@ async function restockAndReprice(
             if (!unbannedAccount) {
                 // If we have no accounts available, just wait instead of
                 // immediately starting another restocking run
-                return waitTillNextHour();
+                await waitTillNextHour();
             }
         }
+    } else {
+        await repriceItems();
+        // Return to main to interleave a restocking run before the next shop wizard run
+        await switchAccount(0);
     }
-
-    const tooManySearches = await repriceItems();
-    if (tooManySearches) {
-        recordBanTime();
-    }
-    // Return to main to interleave a restocking run before the next shop wizard run
-    return switchAccount(0);
 }
 
 const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15]);
@@ -182,7 +181,7 @@ export function ControlPanel() {
             try {
                 return procedure(...request.args);
             } catch (error) {
-                console.log("ERROR", error);
+                console.error("ERROR", error);
             }
         });
     }, []);
@@ -237,6 +236,7 @@ export function ControlPanel() {
                 }}
             />
             {accountsUI}
+            <ListingBrowser />
         </div>
     );
 }

@@ -84,7 +84,7 @@ export function clearListing(link: string): Promise<void> {
 
 export async function getListings(
     itemName: string,
-    limit = 2,
+    limit: number | null = 2,
 ): Promise<Listing[]> {
     const listings = await db.transaction(
         "r",
@@ -100,7 +100,7 @@ export async function getListings(
                 .sortBy("price");
         },
     );
-    return listings.slice(0, limit);
+    return limit !== null ? listings.slice(0, limit) : listings;
 }
 
 export async function getMarketPrice(itemName: string): Promise<number> {

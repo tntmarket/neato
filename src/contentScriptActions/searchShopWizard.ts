@@ -2,7 +2,6 @@ import {
     SearchShopWizard,
     ShopWizardResult,
 } from "@src/contentScripts/shopWizard";
-import { shopWizardUrl } from "@src/urls";
 import { assume } from "@src/util/typeAssertions";
 import browser, { Tabs } from "webextension-polyfill";
 import { waitForTabStatus } from "@src/util/tabControl";
@@ -11,7 +10,7 @@ import { sleep } from "@src/util/randomDelay";
 export async function getShopWizardTab(): Promise<Tabs.Tab> {
     const tabs = await browser.tabs.query({
         url: [
-            shopWizardUrl,
+            "https://www.neopets.com/shops/wizard.phtml",
             "https://www.neopets.com/*destination=%2Fmarket.phtml%3Ftype%3Dwizard",
         ],
     });
@@ -21,7 +20,9 @@ export async function getShopWizardTab(): Promise<Tabs.Tab> {
         return tab;
     }
 
-    return browser.tabs.create({ url: shopWizardUrl });
+    return browser.tabs.create({
+        url: "https://www.neopets.com/shops/wizard.phtml",
+    });
 }
 
 export async function searchShopWizard(

@@ -7,6 +7,11 @@ import { normalDelay } from "@src/util/randomDelay";
 import { callProcedure } from "@src/controlPanel/procedure";
 import { ensureListener } from "@src/util/scriptInjection";
 import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
+import {
+    MIN_PROFIT,
+    MIN_PROFIT_RATIO,
+} from "@src/autoRestock/autoRestockConfig";
+import { getJellyNeoEntry } from "@src/database/jellyNeo";
 
 ensureListener(
     (
@@ -77,14 +82,21 @@ async function annotateShopItem(item: HTMLElement) {
     const { itemName: name, price } = shopItemToStockData(item);
 
     const listings = await callProcedure(getListings, name);
+    const jellyNeoEntry = await callProcedure(getJellyNeoEntry, name);
+    // Pretend item is worth 10000 if jelly neo doesn't know the price
+    const jellyNeoPrice = jellyNeoEntry?.price || 10000;
 
     const extraInfo = getInfoContainer(item);
     item.style.backgroundColor = "";
     item.style.opacity = "";
 
+    const listing = listings[0];
+
     const daysToImpactfulPriceChange =
         estimateDaysToImpactfulPriceChange(listings);
-    if (daysToImpactfulPriceChange < 0) {
+    if (!listing) {
+        extraInfo.style.background = "cornflowerblue";
+    } else if (daysToImpactfulPriceChange < 0) {
         extraInfo.style.background = `rgba(0,0,0,${Math.min(
             // 7 days stale -> blacked out
             -daysToImpactfulPriceChange / 7,
@@ -92,11 +104,7 @@ async function annotateShopItem(item: HTMLElement) {
         )})`;
     }
 
-    if (listings.length === 0) {
-        return;
-    }
-
-    const marketPrice = listings[0].price;
+    const marketPrice = listing ? listing.price : jellyNeoPrice;
 
     const hagglePrice = price * 0.75;
     const haggleProfit = marketPrice - hagglePrice;
@@ -133,7 +141,10 @@ async function annotateShopItem(item: HTMLElement) {
 
     if (profit > 10000 && profitRatio > 0.4) {
         item.style.backgroundColor = "lightcoral";
-    } else if (haggleProfit > 2000 && haggleProfitRatio > 0.6) {
+    } else if (
+        haggleProfit > MIN_PROFIT &&
+        haggleProfitRatio > MIN_PROFIT_RATIO
+    ) {
         item.style.backgroundColor = "lightblue";
     } else if (haggleProfit < 1000 || haggleProfitRatio < 0.2) {
         item.style.opacity = "0.2";

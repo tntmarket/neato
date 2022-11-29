@@ -13,6 +13,11 @@ import { getCurrentShopStock, recordPurchase } from "@src/database/myShopStock";
 import browser from "webextension-polyfill";
 import { waitForTabStatus } from "@src/util/tabControl";
 import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
+import {
+    MIN_PROFIT,
+    MIN_PROFIT_RATIO,
+} from "@src/autoRestock/autoRestockConfig";
+import { getJellyNeoEntry } from "@src/database/jellyNeo";
 
 type BuyOpportunity = {
     itemName: string;
@@ -22,11 +27,11 @@ type BuyOpportunity = {
     profit: number;
     profitRatio: number;
     hagglePrice: number;
-    haggleProfit: number;
-    haggleProfitRatio: number;
     alreadyStocked: number;
     futureHaggleProfit: number;
     futureHaggleProfitRatio: number;
+    fellBackToJellyNeo: boolean;
+    jellyNeoPrice: number;
 };
 
 function undercutNTimes(price: number, timesToUndercut: number) {
@@ -47,15 +52,16 @@ async function estimateProfitability(
         npcStock.map(async ({ itemName, price, quantity }) => {
             const listings = await getListings(itemName);
             const listing = listings[0];
-            if (!listing) {
-                return;
-            }
 
-            const marketPrice = listings[0].price;
+            // Fall back to jelly neo if we don't know the price
+            const jellyNeoEntry = await getJellyNeoEntry(itemName);
+            // Pretend item is worth 10000 if jelly neo doesn't know the price
+            const jellyNeoPrice = jellyNeoEntry?.price || 10000;
+
+            // Fall back to jelly neo if we don't know the price
+            const marketPrice = listing ? listing.price : jellyNeoPrice;
 
             const hagglePrice = price * 0.75;
-            const haggleProfit = marketPrice - hagglePrice;
-            const haggleProfitRatio = haggleProfit / hagglePrice;
 
             const profit = marketPrice - price;
             const profitRatio = profit / price;
@@ -79,11 +85,11 @@ async function estimateProfitability(
                 profit,
                 profitRatio,
                 hagglePrice,
-                haggleProfit,
-                haggleProfitRatio,
                 alreadyStocked,
                 futureHaggleProfit,
                 futureHaggleProfitRatio,
+                fellBackToJellyNeo: !listing,
+                jellyNeoPrice,
             });
         }),
     );
@@ -95,10 +101,19 @@ function isWorth({
     futureHaggleProfit,
     futureHaggleProfitRatio,
     alreadyStocked,
+    fellBackToJellyNeo,
 }: BuyOpportunity) {
+    if (fellBackToJellyNeo) {
+        return (
+            futureHaggleProfit > MIN_PROFIT &&
+            futureHaggleProfitRatio > MIN_PROFIT_RATIO &&
+            // Don't over-commit to buying multiples. We'll have a better price after pricing the first copy anyways
+            alreadyStocked < 1
+        );
+    }
     return (
-        futureHaggleProfit > 2000 &&
-        futureHaggleProfitRatio > 0.5 &&
+        futureHaggleProfit > MIN_PROFIT &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO &&
         daysToImpactfulPriceChange > 0 &&
         alreadyStocked < 10
     );
@@ -112,7 +127,7 @@ async function bestItemToHaggleFor(
     return ljs(
         buyOpportunities
             .filter(isWorth)
-            .sort((buyA, buyB) => buyB.haggleProfit - buyA.haggleProfit),
+            .sort((buyA, buyB) => buyB.futureHaggleProfit - buyA.futureHaggleProfit),
     )[0];
 }
 

@@ -147,7 +147,10 @@ export async function undercutMarketPrices(): Promise<void> {
     const tabId = await getMyShopPageTab(0);
 
     const allStockedItems = await getMyShopStock(tabId);
-    await addStockedItems(allStockedItems);
+    // Prevent accidentally clobbering shop in case a side account opens the shop
+    if (allStockedItems.length > 0) {
+        await addStockedItems(allStockedItems);
+    }
 
     const itemNameToPrice: NameToPrice = {};
     for (const { itemName, price } of allStockedItems) {

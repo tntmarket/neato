@@ -15,17 +15,17 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
         return;
     }
 
-    const marketPrice = (await callProcedure(getListings, itemName))[0].price;
-    if (marketPrice >= 300 || marketPrice === 0) {
-        stockButton.click();
-        buttonsSelected = true;
-    } else {
+    const listing = (await callProcedure(getListings, itemName))[0];
+    if (listing && listing.price < 300) {
         const depositButton = assume(
             stockButton
                 .closest("tr")
                 ?.querySelector<HTMLInputElement>('input[value="deposit"]'),
         );
         depositButton.click();
+        buttonsSelected = true;
+    } else {
+        stockButton.click();
         buttonsSelected = true;
     }
 });

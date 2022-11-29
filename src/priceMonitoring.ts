@@ -68,8 +68,8 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
                     itemName,
                     price1: listings[0].price,
                     price2: listings[1]?.price,
-                    // Always keep our shop inventory at least 2 days fresh
-                    daysUntilStale: 2 - daysAgo(listings[0].lastSeen),
+                    // Always keep our shop inventory at least 1 day fresh
+                    daysUntilStale: 1 - daysAgo(listings[0].lastSeen),
                 });
                 return;
             }

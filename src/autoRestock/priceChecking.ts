@@ -1,21 +1,35 @@
 import { getListings, upsertListingsSection } from "@src/database/listings";
 import { hoursAgo } from "@src/util/dateTime";
 import { searchShopWizard } from "@src/contentScriptActions/searchShopWizard";
-import { ljs } from "@src/util/logging";
 import browser, { Tabs } from "webextension-polyfill";
 import { assume } from "@src/util/typeAssertions";
 import { waitForTabStatus } from "@src/util/tabControl";
 import { sleep } from "@src/util/randomDelay";
+import { MIN_PROFIT } from "@src/autoRestock/autoRestockConfig";
+import { getCurrentShopStock } from "@src/database/myShopStock";
 
 export async function checkPrice(
     itemName: string,
 ): Promise<{ tooManySearches?: true }> {
-    const { sections, tooManySearches } = await searchShopWizard({
-        itemName,
-        numberOfSections: 5,
-        maxRequests: 8,
-        abortIfCheaperThan: 1000,
-    });
+    const numberOwned = await getCurrentShopStock(itemName);
+    const { sections, tooManySearches } = await searchShopWizard(
+        numberOwned > 0
+            ? {
+                  itemName,
+                  numberOfSections: 6,
+                  maxRequests: 8,
+                  // If we are currently selling an item, do a very accurate check, to make sure we're the cheapest
+                  abortIfCheaperThan: 500,
+              }
+            : {
+                  itemName,
+                  numberOfSections: 5,
+                  maxRequests: 7,
+                  // If we're just checking to prepare for restocking,
+                  // abort as soon as we know it's cheap enough to ignore
+                  abortIfCheaperThan: MIN_PROFIT,
+              },
+    );
 
     if (tooManySearches) {
         return { tooManySearches };

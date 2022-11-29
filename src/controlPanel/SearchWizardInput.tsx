@@ -22,7 +22,7 @@ export function SearchWizardInput({ onSearch }: Props) {
                     onKeyDown={(event) => {
                         if (event.key === "Enter") {
                             setItemName("");
-                            onSearch(itemName);
+                            onSearch(itemName.trim());
                         }
                     }}
                 />
