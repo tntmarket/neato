@@ -183,12 +183,29 @@ async function wheelOfKnowledge() {
 }
 
 async function winterKiosk() {
-    const boughtRacesToRiches = true;
-    if (boughtRacesToRiches) {
-        // Start scratching
-    } else {
-        getInputByValue("Yes, I will have one please")?.click();
+    const cardSelector = $<HTMLSelectElement>('select[name="card_id"]');
+    if (cardSelector) {
+        if (cardSelector.querySelector('option[value="8903"]')) {
+            cardSelector.value = "8903";
+            getInputByValue("Scratch!")?.click();
+        }
+        return;
     }
+
+    const buyCardButton = getInputByValue("Yes, I will have one please");
+    if (buyCardButton) {
+        buyCardButton.click();
+        return;
+    }
+
+    [1, 2, 3, 4, 5, 6].forEach((spot) => {
+        const scratchSpot = $(
+            `a[href="process_kiosk.phtml?type=scratch&loc=${spot}"]`,
+        );
+        if (scratchSpot) {
+            scratchSpot.click();
+        }
+    });
 }
 
 async function meteor() {
@@ -220,6 +237,7 @@ const linkToRoutine = {
     "/medieval/wiseking.phtml": wiseKing,
     "/medieval/knowledge.phtml": wheelOfKnowledge,
     "/winter/kiosk.phtml": winterKiosk,
+    "/winter/kiosk2.phtml": winterKiosk,
     "/moon/meteor.phtml?getclose=1": meteor,
 };
 

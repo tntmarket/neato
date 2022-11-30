@@ -3,6 +3,7 @@ import { $All, getInputByValue } from "@src/util/domHelpers";
 import { getListings } from "@src/database/listings";
 import { callProcedure } from "@src/controlPanel/procedure";
 import { ensureListener } from "@src/util/scriptInjection";
+import { MIN_PROFIT } from "@src/autoRestock/autoRestockConfig";
 
 let buttonsSelected = false;
 
@@ -16,7 +17,7 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
     }
 
     const listing = (await callProcedure(getListings, itemName))[0];
-    if (listing && listing.price < 1000) {
+    if (listing && listing.price < MIN_PROFIT) {
         const depositButton = assume(
             stockButton
                 .closest("tr")

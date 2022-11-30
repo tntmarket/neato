@@ -5,7 +5,7 @@ import {
     HaggleSession,
 } from "@src/contentScriptActions/getNpcShopStock";
 import { HaggleDetails } from "@src/contentScripts/haggle";
-import { getNpcStockPrice } from "@src/database/npcStock";
+import { getNpcStockPrice, NpcStockData } from "@src/database/npcStock";
 import { assume } from "@src/util/typeAssertions";
 import { ljs } from "@src/util/logging";
 import { normalDelay, sleep } from "@src/util/randomDelay";
@@ -14,6 +14,8 @@ import browser from "webextension-polyfill";
 import { waitForTabStatus } from "@src/util/tabControl";
 import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 import {
+    ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW,
+    MAX_COPIES_TO_SHELVE,
     MIN_PROFIT,
     MIN_PROFIT_RATIO,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
@@ -44,59 +46,58 @@ function undercutNTimes(price: number, timesToUndercut: number) {
     return underCutPrice;
 }
 
+export async function calculateBuyOpportunity({
+    itemName,
+    price,
+    quantity,
+}: NpcStockData): Promise<BuyOpportunity> {
+    const listings = await getListings(itemName);
+    const listing = listings[0];
+
+    // Fall back to jelly neo if we don't know the price
+    const jellyNeoEntry = await getJellyNeoEntry(itemName);
+    // Pretend item is worth 10000 if jelly neo doesn't know the price
+    const jellyNeoPrice =
+        jellyNeoEntry?.price || ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW;
+
+    // Fall back to jelly neo if we don't know the price
+    const marketPrice = listing ? listing.price : jellyNeoPrice;
+
+    const hagglePrice = price * 0.75;
+
+    const profit = marketPrice - price;
+    const profitRatio = profit / price;
+
+    const alreadyStocked = await getCurrentShopStock(itemName);
+    // Penalize buying lots of the same item, cause the price will
+    // change by time it's next up to be sold.
+    const futureMarketPrice = undercutNTimes(marketPrice, alreadyStocked + 1);
+    const futureHaggleProfit = futureMarketPrice - hagglePrice;
+    const futureHaggleProfitRatio = futureHaggleProfit / hagglePrice;
+
+    return {
+        itemName,
+        daysToImpactfulPriceChange:
+            estimateDaysToImpactfulPriceChange(listings),
+        quantity,
+        marketPrice,
+        profit,
+        profitRatio,
+        hagglePrice,
+        alreadyStocked,
+        futureHaggleProfit,
+        futureHaggleProfitRatio,
+        fellBackToJellyNeo: !listing,
+        jellyNeoPrice,
+    };
+}
+
 async function estimateProfitability(
     tabId: number,
     shopId: number,
 ): Promise<BuyOpportunity[]> {
     const npcStock = await getNpcShopStock(tabId, shopId);
-    const buyOpportunities: BuyOpportunity[] = [];
-    await Promise.all(
-        npcStock.map(async ({ itemName, price, quantity }) => {
-            const listings = await getListings(itemName);
-            const listing = listings[0];
-
-            // Fall back to jelly neo if we don't know the price
-            const jellyNeoEntry = await getJellyNeoEntry(itemName);
-            // Pretend item is worth 10000 if jelly neo doesn't know the price
-            const jellyNeoPrice =
-                jellyNeoEntry?.price || MIN_PROFIT_RATIO_TO_QUICK_BUY;
-
-            // Fall back to jelly neo if we don't know the price
-            const marketPrice = listing ? listing.price : jellyNeoPrice;
-
-            const hagglePrice = price * 0.75;
-
-            const profit = marketPrice - price;
-            const profitRatio = profit / price;
-
-            const alreadyStocked = await getCurrentShopStock(itemName);
-            // Penalize buying lots of the same item, cause the price will
-            // change by time it's next up to be sold.
-            const futureMarketPrice = undercutNTimes(
-                marketPrice,
-                alreadyStocked,
-            );
-            const futureHaggleProfit = futureMarketPrice - hagglePrice;
-            const futureHaggleProfitRatio = futureHaggleProfit / hagglePrice;
-
-            buyOpportunities.push({
-                itemName,
-                daysToImpactfulPriceChange:
-                    estimateDaysToImpactfulPriceChange(listings),
-                quantity,
-                marketPrice,
-                profit,
-                profitRatio,
-                hagglePrice,
-                alreadyStocked,
-                futureHaggleProfit,
-                futureHaggleProfitRatio,
-                fellBackToJellyNeo: !listing,
-                jellyNeoPrice,
-            });
-        }),
-    );
-    return buyOpportunities;
+    return Promise.all(npcStock.map(calculateBuyOpportunity));
 }
 
 function isWorth({
@@ -106,21 +107,33 @@ function isWorth({
     alreadyStocked,
     fellBackToJellyNeo,
 }: BuyOpportunity) {
-    if (fellBackToJellyNeo) {
-        return (
-            futureHaggleProfit > MIN_PROFIT &&
-            futureHaggleProfitRatio > MIN_PROFIT_RATIO &&
-            // Don't over-commit to buying multiples. We'll have a better price after pricing the first copy anyways
-            alreadyStocked < 1
-        );
-    }
-    return (
+    const isMinimallyProfitable =
         futureHaggleProfit > MIN_PROFIT &&
-        futureHaggleProfitRatio > MIN_PROFIT_RATIO &&
-        // If the price is too stale, don't trust it until it's refreshed
-        daysToImpactfulPriceChange > 0 &&
-        alreadyStocked < 7
-    );
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO;
+    if (!isMinimallyProfitable) {
+        return false;
+    }
+
+    if (fellBackToJellyNeo) {
+        // Don't over-commit to buying multiples. We'll have a better price after pricing the first copy anyways
+        return alreadyStocked < 1;
+    }
+
+    if (daysToImpactfulPriceChange < 0) {
+        // If the price is "too stale", don't trust the price until it's refreshed
+        return false;
+    }
+
+    const isVeryProfitable =
+        futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY;
+    if (isVeryProfitable) {
+        // Buy up to 10 copies of very valuable items
+        return alreadyStocked < 10;
+    }
+
+    // Buy up to 5 copies of marginally profitable items
+    return alreadyStocked < MAX_COPIES_TO_SHELVE;
 }
 
 async function bestItemToHaggleFor(

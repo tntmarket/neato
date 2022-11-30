@@ -46,6 +46,14 @@
             "js": ["js/myShopStock.js"]
         },
         {
+            "matches": ["https://www.neopets.com/market.phtml?*type=till*"],
+            "js": ["js/shopTill.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/safetydeposit.phtml*"],
+            "js": ["js/depositBox.js"]
+        },
+        {
             "matches": ["https://www.neopets.com/shops/wizard.phtml"],
             "js": ["js/shopWizard.js"]
         },

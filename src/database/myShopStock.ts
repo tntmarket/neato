@@ -1,11 +1,9 @@
 import { db } from "@src/database/databaseSchema";
 
-export type Price = {
+export type StockedItem = {
     itemName: string;
-    price: number;
-};
-export type StockedItem = Price & {
     quantity: number;
+    price: number;
 };
 export type ShopStockResults = {
     stock: StockedItem[];

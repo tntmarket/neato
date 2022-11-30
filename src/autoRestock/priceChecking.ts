@@ -17,9 +17,9 @@ export async function checkPrice(
             ? {
                   itemName,
                   numberOfSections: 6,
-                  maxRequests: 8,
+                  maxRequests: 9,
                   // If we are currently selling an item, do a very accurate check, to make sure we're the cheapest
-                  abortIfCheaperThan: 500,
+                  abortIfCheaperThan: 1000,
               }
             : {
                   itemName,

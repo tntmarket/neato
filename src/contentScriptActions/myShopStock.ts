@@ -2,12 +2,13 @@ import { assume } from "@src/util/typeAssertions";
 import browser from "webextension-polyfill";
 import {
     addStockedItems,
+    getAllStockedItems,
     ShopStockResults,
     StockedItem,
 } from "@src/database/myShopStock";
 import { getListings, Listing } from "@src/database/listings";
 import { NameToPrice } from "@src/contentScripts/myShopStock";
-import { normalDelay, sleep } from "@src/util/randomDelay";
+import { normalDelay } from "@src/util/randomDelay";
 import { waitForTabStatus } from "@src/util/tabControl";
 
 function myShopStockUrl(page: number): string {
@@ -36,32 +37,38 @@ async function setPage(tabId: number, page = 1) {
     await browser.tabs.update(tabId, {
         url: myShopStockUrl(page),
     });
-    await normalDelay(555);
     await waitForTabStatus(tabId, "complete");
-}
-
-async function ensureScriptInjected() {
-    await sleep(2000);
-}
-
-async function getShopStock(tabId: number): Promise<ShopStockResults> {
-    await ensureScriptInjected();
-
-    return browser.tabs.sendMessage(tabId, {
-        action: "GET_USER_SHOP_STOCK",
-    });
 }
 
 const MIN_PAGE = 1;
 const MAX_PAGE = 40;
 
-async function getMyShopStock(tabId: number): Promise<StockedItem[]> {
+async function setShopStockPrices(
+    tabId: number,
+    itemNameToPrice: NameToPrice,
+): Promise<ShopStockResults> {
+    return browser.tabs.sendMessage(tabId, {
+        action: "SET_USER_SHOP_PRICES",
+        itemNameToPrice,
+    });
+}
+
+async function setMyShopStockPrices(
+    tabId: number,
+    itemNameToPrice: NameToPrice,
+): Promise<StockedItem[]> {
     let stockedItems: StockedItem[] = [];
 
     for (let pageNumber = MIN_PAGE; pageNumber <= MAX_PAGE; pageNumber += 1) {
         await setPage(tabId, pageNumber);
 
-        const { stock, hasMore } = await getShopStock(tabId);
+        // time to read and update the shop page
+        await normalDelay(555);
+
+        const { stock, hasMore } = await setShopStockPrices(
+            tabId,
+            itemNameToPrice,
+        );
 
         stockedItems = stockedItems.concat(stock);
 
@@ -73,40 +80,8 @@ async function getMyShopStock(tabId: number): Promise<StockedItem[]> {
     return stockedItems;
 }
 
-async function setShopStockPrices(
-    tabId: number,
-    itemNameToPrice: NameToPrice,
-): Promise<{ hasMore: boolean }> {
-    await ensureScriptInjected();
-
-    return browser.tabs.sendMessage(tabId, {
-        action: "SET_USER_SHOP_PRICES",
-        itemNameToPrice,
-    });
-}
-
-async function setMyShopStockPrices(
-    tabId: number,
-    itemNameToPrice: NameToPrice,
-): Promise<void> {
-    for (let pageNumber = MIN_PAGE; pageNumber <= MAX_PAGE; pageNumber += 1) {
-        await setPage(tabId, pageNumber);
-        const { hasMore } = await setShopStockPrices(tabId, itemNameToPrice);
-
-        if (!hasMore) {
-            return;
-        }
-    }
-}
-
-//////////////////////////////////////////////////////
-
 function underCut(marketPrice: number) {
     return Math.max(marketPrice - (marketPrice % 100) - 1, 1);
-}
-
-function getMarketPriceExcludingSelf(listings: Listing[]) {
-    return getMarketPriceEntryExcludingSelf(listings).price;
 }
 
 function getMarketPriceEntryExcludingSelf(listings: Listing[]): Listing {
@@ -132,7 +107,7 @@ async function getUnderCutPrice(
         return price;
     }
 
-    const marketPrice = getMarketPriceExcludingSelf(listings);
+    const marketPrice = getMarketPriceEntryExcludingSelf(listings).price;
     const underCutPrice = underCut(marketPrice);
 
     if (price > 0 && price <= underCutPrice) {
@@ -146,25 +121,23 @@ async function getUnderCutPrice(
 export async function undercutMarketPrices(): Promise<void> {
     const tabId = await getMyShopPageTab(0);
 
-    const allStockedItems = await getMyShopStock(tabId);
-    // Prevent accidentally clobbering shop in case a side account opens the shop
-    if (allStockedItems.length > 0) {
-        await addStockedItems(allStockedItems);
-    }
+    const previouslyStockedItems = await getAllStockedItems();
 
-    const itemNameToPrice: NameToPrice = {};
-    for (const { itemName, price } of allStockedItems) {
+    const priceUpdates: NameToPrice = {};
+    for (const { itemName, price } of previouslyStockedItems) {
         const newPrice = await getUnderCutPrice(itemName, price);
-        if (newPrice !== price) {
+        if (newPrice > 0 && newPrice < 1000) {
+            console.log(`${itemName} is only worth ${newPrice}, removing`);
+            priceUpdates[itemName] = -1;
+        } else if (newPrice !== price) {
             console.log(`Updating ${itemName} from ${price} => ${newPrice}`);
-            itemNameToPrice[itemName] = newPrice;
-        } else if (newPrice > 0 && newPrice < 1000) {
-            console.log(`${itemName} is only worth ${price}, removing`);
-            itemNameToPrice[itemName] = -1;
+            priceUpdates[itemName] = newPrice;
         }
     }
 
-    if (Object.keys(itemNameToPrice).length > 0) {
-        await setMyShopStockPrices(tabId, itemNameToPrice);
+    const newlyStockedItems = await setMyShopStockPrices(tabId, priceUpdates);
+    // Prevent accidentally clobbering shop in case a side account opens the shop
+    if (newlyStockedItems.length > 0) {
+        await addStockedItems(newlyStockedItems);
     }
 }

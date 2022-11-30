@@ -20,7 +20,7 @@ function itemNameSet(items: { itemName: string }[]) {
     return new Set(items.map((stock) => stock.itemName));
 }
 
-export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
+export async function getNextItemsToReprice(limit: number): Promise<string[]> {
     const itemsToMonitor = await getJellyNeoEntries();
     const itemNamesToMonitor = itemNameSet(itemsToMonitor);
 
@@ -34,9 +34,10 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
 
     const rankingResults: RankingResult[] = [];
 
+    console.time("Calculate pricing priority");
     await Promise.all(
         [...itemNamesToMonitor].map(async (itemName) => {
-            const listings = await getListings(itemName, 100);
+            const listings = await getListings(itemName, 2);
 
             if (listings.length === 0) {
                 if (myStockedItemNames.has(itemName)) {
@@ -75,19 +76,30 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
                     // Always keep our shop inventory fresh
                     daysUntilStale: 0.5 - daysAgo(listings[0].lastSeen),
                 });
-                return;
+            } else if (npcStockItemNames.has(itemName)) {
+                rankingResults.push({
+                    itemName,
+                    price1: listings[0].price,
+                    price2: listings[1]?.price,
+                    daysUntilStale:
+                        estimatedDaysUntilPriceChange -
+                        daysAgo(listings[0].lastSeen) -
+                        // Slightly expedite items that are currently stocked
+                        2,
+                });
+            } else {
+                rankingResults.push({
+                    itemName,
+                    price1: listings[0].price,
+                    price2: listings[1]?.price,
+                    daysUntilStale:
+                        estimatedDaysUntilPriceChange -
+                        daysAgo(listings[0].lastSeen),
+                });
             }
-
-            rankingResults.push({
-                itemName,
-                price1: listings[0].price,
-                price2: listings[1]?.price,
-                daysUntilStale:
-                    estimatedDaysUntilPriceChange -
-                    daysAgo(listings[0].lastSeen),
-            });
         }),
     );
+    console.timeEnd("Calculate pricing priority");
 
     rankingResults.sort((a, b) => a.daysUntilStale - b.daysUntilStale);
 
@@ -108,7 +120,7 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
     return ljs(
         rankingResults
             .slice(0, limit)
-            .filter((result) => result.daysUntilStale <= 0)
+            // .filter((result) => result.daysUntilStale <= 0)
             .map((result) => result.itemName),
     );
 }

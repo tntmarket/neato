@@ -1,20 +1,16 @@
 import { assume } from "@src/util/typeAssertions";
 import { $, $All } from "@src/util/domHelpers";
-import { getListings } from "@src/database/listings";
-import { openLink } from "@src/util/navigationHelpers";
 import { NpcStockData } from "@src/database/npcStock";
 import { normalDelay } from "@src/util/randomDelay";
 import { callProcedure } from "@src/controlPanel/procedure";
 import { ensureListener } from "@src/util/scriptInjection";
-import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 import {
-    ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW,
     MIN_PROFIT,
     MIN_PROFIT_RATIO,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
     MIN_PROFIT_TO_QUICK_BUY,
 } from "@src/autoRestock/autoRestockConfig";
-import { getJellyNeoEntry } from "@src/database/jellyNeo";
+import { calculateBuyOpportunity } from "@src/autoRestock/buyingItems";
 
 ensureListener(
     (
@@ -83,23 +79,30 @@ function getInfoContainer(item: HTMLElement): HTMLElement {
 }
 
 async function annotateShopItem(item: HTMLElement) {
-    const { itemName: name, price } = shopItemToStockData(item);
+    const npcStockData = shopItemToStockData(item);
 
-    const listings = await callProcedure(getListings, name);
-    const jellyNeoEntry = await callProcedure(getJellyNeoEntry, name);
-    // Pretend item is worth 10000 if jelly neo doesn't know the price
-    const jellyNeoPrice =
-        jellyNeoEntry?.price || ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW;
+    const {
+        alreadyStocked,
+        fellBackToJellyNeo,
+        daysToImpactfulPriceChange,
+        hagglePrice,
+        marketPrice,
+        futureHaggleProfit,
+        futureHaggleProfitRatio,
+    } = await callProcedure(calculateBuyOpportunity, npcStockData);
+
+    const stockLine = item.querySelectorAll<HTMLElement>(".item-stock")[0];
+    if (alreadyStocked > 0) {
+        stockLine.innerText = `${npcStockData.quantity} in stock | ${alreadyStocked}`;
+        stockLine.style.color = "darkred";
+    }
 
     const extraInfo = getInfoContainer(item);
     item.style.backgroundColor = "";
     item.style.opacity = "";
 
-    const listing = listings[0];
-
-    const daysToImpactfulPriceChange =
-        estimateDaysToImpactfulPriceChange(listings);
-    if (!listing) {
+    extraInfo.title = `${Math.round(daysToImpactfulPriceChange * 100) / 100}`;
+    if (fellBackToJellyNeo) {
         extraInfo.style.background = "greenyellow";
     } else if (daysToImpactfulPriceChange < 0) {
         extraInfo.style.background = `rgba(0,0,0,${Math.min(
@@ -109,52 +112,36 @@ async function annotateShopItem(item: HTMLElement) {
         )})`;
     }
 
-    const marketPrice = listing ? listing.price : jellyNeoPrice;
-
-    const hagglePrice = price * 0.75;
-    const haggleProfit = marketPrice - hagglePrice;
-    const haggleProfitRatio = haggleProfit / hagglePrice;
-
-    const profit = marketPrice - price;
-    const profitRatio = profit / price;
-
-    // const profitLabel = document.createElement("p");
-    // profitLabel.className = "item-stock";
-    // profitLabel.style.color = profit > 0 ? "darkgreen" : "darkred";
-    // profitLabel.append(`${profit} / ${Math.round(profitRatio * 100)}%`);
-    // extraInfo.append(profitLabel);
-
     const haggleLabel = document.createElement("p");
     haggleLabel.className = "item-stock";
-    haggleLabel.style.color = haggleProfit > 0 ? "darkgreen" : "darkred";
+    haggleLabel.style.color = futureHaggleProfit > 0 ? "darkgreen" : "darkred";
     haggleLabel.append(
-        `${Math.round(haggleProfit)} / ${Math.round(haggleProfitRatio * 100)}%`,
+        `${Math.round(futureHaggleProfit)} / ${Math.round(
+            futureHaggleProfitRatio * 100,
+        )}%`,
     );
     extraInfo.append(haggleLabel);
 
     const haggleBuySellLabel = document.createElement("p");
     haggleBuySellLabel.className = "item-stock";
-    haggleBuySellLabel.append(`${Math.round(price * 0.75)} → `);
+    haggleBuySellLabel.append(`${Math.round(hagglePrice)} → `);
     const marketPriceLink = document.createElement("a");
     marketPriceLink.append(marketPrice.toString());
     marketPriceLink.href = "javascript:void(0)";
-    marketPriceLink.onclick = () => {
-        openLink(listings[0].link);
-    };
     haggleBuySellLabel.append(marketPriceLink);
     extraInfo.append(haggleBuySellLabel);
 
     if (
-        profit > MIN_PROFIT_TO_QUICK_BUY &&
-        profitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY
+        futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY
     ) {
         item.style.backgroundColor = "lightcoral";
     } else if (
-        haggleProfit > MIN_PROFIT &&
-        haggleProfitRatio > MIN_PROFIT_RATIO
+        futureHaggleProfit > MIN_PROFIT &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO
     ) {
         item.style.backgroundColor = "lightblue";
-    } else if (haggleProfit < 1000 || haggleProfitRatio < 0.2) {
+    } else if (futureHaggleProfit < 1000 || futureHaggleProfitRatio < 0.2) {
         item.style.opacity = "0.2";
     }
 }
@@ -170,4 +157,3 @@ async function annotateShopStock() {
 
 annotateShopStock();
 const keepUpdatingItemInfo = setInterval(annotateShopStock, 3000);
-// overlayButtonToCommitItemsForPricing();

@@ -1,10 +1,13 @@
 import {
     clearListing,
     getListings,
+    getMarketPrice,
     updateListing,
 } from "@src/database/listings";
 import { trackUserWasFrozen } from "@src/database/user";
 import { getJellyNeoEntry, setItemMonitorList } from "@src/database/jellyNeo";
+import { getCurrentShopStock } from "@src/database/myShopStock";
+import { calculateBuyOpportunity } from "@src/autoRestock/buyingItems";
 
 const PROCEDURES = [
     setItemMonitorList,
@@ -13,6 +16,9 @@ const PROCEDURES = [
     clearListing,
     updateListing,
     getJellyNeoEntry,
+    getCurrentShopStock,
+    getMarketPrice,
+    calculateBuyOpportunity,
 ];
 
 export type Procedure = typeof PROCEDURES[number];

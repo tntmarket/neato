@@ -15,6 +15,8 @@ import { useAccounts, waitTillNextHour } from "@src/accounts";
 import browser from "webextension-polyfill";
 import { quickStockItems } from "@src/contentScriptActions/quickStock";
 import { ListingBrowser } from "@src/controlPanel/ListingBrowser";
+import { MyShopStockBrowser } from "@src/controlPanel/MyShopStockBrowser";
+import { withdrawShopTill } from "@src/contentScriptActions/shopTill";
 
 let latestAutomationSessionId = 0;
 
@@ -131,6 +133,7 @@ async function restockAndReprice(
     }
 
     if (loggedIntoMainAccount) {
+        await withdrawShopTill();
         await cycleThroughShopsUntilNoProfitableItems(shopIds);
         await quickStockItems();
         await undercutMarketPrices();
@@ -249,6 +252,7 @@ export function ControlPanel() {
             />
             {accountsUI}
             <ListingBrowser />
+            <MyShopStockBrowser />
         </div>
     );
 }

@@ -1,5 +1,6 @@
 import { db } from "@src/database/databaseSchema";
 import { getOtherCharsInSection } from "@src/shopWizardSection";
+import { getFrozenUserNames } from "@src/database/user";
 
 export type Listing = ListingData & {
     itemName: string;
@@ -86,21 +87,16 @@ export async function getListings(
     itemName: string,
     limit: number | null = 2,
 ): Promise<Listing[]> {
-    const listings = await db.transaction(
-        "r",
-        db.listings,
-        db.frozenUsers,
-        async () => {
-            const frozenUsers = await db.frozenUsers.toArray();
-            const frozenUserNames = frozenUsers.map((user) => user.userName);
-
-            return db.listings
-                .where({ itemName })
-                .filter(({ userName }) => !frozenUserNames.includes(userName))
-                .sortBy("price");
-        },
+    const listings = await db.transaction("r", db.listings, async () =>
+        db.listings.where({ itemName }).sortBy("price"),
     );
-    return limit !== null ? listings.slice(0, limit) : listings;
+
+    const frozenUserNames = await getFrozenUserNames();
+    const unfrozenListings = listings.filter(
+        (listing) => !frozenUserNames.includes(listing.userName),
+    );
+
+    return limit !== null ? unfrozenListings.slice(0, limit) : unfrozenListings;
 }
 
 export async function getMarketPrice(itemName: string): Promise<number> {
