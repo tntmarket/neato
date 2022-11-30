@@ -46,6 +46,16 @@ async function setUserShopPrices(itemNameToPrice: NameToPrice): Promise<{
         if (!newPrice) {
             continue;
         }
+        // If price is negative, it means unshelve the item
+        if (newPrice < 0) {
+            const removeDropdown = assume(
+                row.querySelector<HTMLSelectElement>("select"),
+            );
+            const quantity =
+                removeDropdown.querySelectorAll("option").length - 1;
+            removeDropdown.value = quantity.toString();
+            continue;
+        }
         const priceInput = assume(
             row.querySelector<HTMLInputElement>('input[type="text"]'),
         );

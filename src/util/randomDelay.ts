@@ -1,3 +1,5 @@
+import { setTimeout } from "worker-timers";
+
 export function normalDelay(ms: number, percentageRange = 0.8) {
     return sleep(randomPercentRange(ms, percentageRange));
 }

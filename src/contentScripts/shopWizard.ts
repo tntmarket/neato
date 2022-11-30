@@ -4,6 +4,7 @@ import { ListingData } from "@src/database/listings";
 import { $, $All, waitForElementToExist } from "@src/util/domHelpers";
 import { getSection } from "@src/shopWizardSection";
 import { ensureListener } from "@src/util/scriptInjection";
+import { clearTimeout, setTimeout } from "worker-timers";
 
 ensureListener(
     (request: { action: "SEARCH_SHOP_WIZARD" } & SearchShopWizard) => {
@@ -43,12 +44,13 @@ async function waitForResultsToChange(timeout = 1111): Promise<void> {
         const observer = new MutationObserver(async () => {
             if (shopWizardFormResults.innerText.includes("Searching for:")) {
                 observer.disconnect();
-                clearTimeout(abortionTimeout);
+                clearTimeout(abortTimeout);
                 resolve();
             }
         });
 
-        const abortionTimeout = setTimeout(() => {
+        const abortTimeout = setTimeout(() => {
+            console.log("Timed out waiting for mutation");
             observer.disconnect();
             resolve();
         }, timeout);

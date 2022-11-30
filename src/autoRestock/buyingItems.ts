@@ -127,7 +127,10 @@ async function bestItemToHaggleFor(
     return ljs(
         buyOpportunities
             .filter(isWorth)
-            .sort((buyA, buyB) => buyB.futureHaggleProfit - buyA.futureHaggleProfit),
+            .sort(
+                (buyA, buyB) =>
+                    buyB.futureHaggleProfit - buyA.futureHaggleProfit,
+            ),
     )[0];
 }
 
@@ -212,7 +215,7 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
 
     // Ensure script injected
     await waitForTabStatus(tabId, "complete");
-    await sleep(1000);
+    await sleep(100);
 
     const buyOpportunity = await bestItemToHaggleFor(tabId, shopId);
 
@@ -220,9 +223,8 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         return { status: "NOTHING_TO_BUY" };
     }
 
-    // Time to select item
-    await normalDelay(555);
-
+    // Time to choose an item to buy and click it
+    await normalDelay(1111);
     const session = await HaggleSession.start(tabId, buyOpportunity.itemName);
 
     let nextOffer = 0;
@@ -242,7 +244,9 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         }
         if (situation.status === "OFFER_ACCEPTED") {
             await recordPurchase(buyOpportunity.itemName);
-            await normalDelay(5555);
+            // Wait at least 5s before returning to shop, cause we can
+            // only buy a max of 1 item every 5s
+            await normalDelay(6666);
             return {
                 status: "OFFER_ACCEPTED",
                 itemName: buyOpportunity.itemName,
@@ -252,13 +256,13 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
 
         nextOffer = await getNextOffer(situation);
         if (nextOffer === situation.lastOffer) {
-            // Failsafe in case we get locked stuck, and the price isn't budging
+            // Failsafe in case we get stuck, and the price isn't budging
             nextOffer = situation.currentAsk;
         }
+        // Time to type in offer and click captcha
+        await normalDelay(1111);
         await session.makeOffer(nextOffer);
     }
-
-    await normalDelay(1111);
 
     return {
         status: "STUCK_IN_LOOP",

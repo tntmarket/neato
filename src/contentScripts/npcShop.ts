@@ -57,6 +57,7 @@ async function startHaggling(itemToHaggleFor: string) {
                 item.querySelector<HTMLElement>(".item-img"),
             );
             itemImage.click();
+            // Time to click "YES" in the modal
             await normalDelay(222);
             assume($("#confirm-link")).click();
             return;
@@ -95,7 +96,7 @@ async function annotateShopItem(item: HTMLElement) {
     const daysToImpactfulPriceChange =
         estimateDaysToImpactfulPriceChange(listings);
     if (!listing) {
-        extraInfo.style.background = "cornflowerblue";
+        extraInfo.style.background = "greenyellow";
     } else if (daysToImpactfulPriceChange < 0) {
         extraInfo.style.background = `rgba(0,0,0,${Math.min(
             // 7 days stale -> blacked out
@@ -151,10 +152,15 @@ async function annotateShopItem(item: HTMLElement) {
     }
 }
 
-function annotateShopStock() {
-    $All(".shop-item").map(annotateShopItem);
+async function annotateShopStock() {
+    try {
+        await Promise.all($All(".shop-item").map(annotateShopItem));
+    } catch (e) {
+        console.error(e);
+        clearInterval(keepUpdatingItemInfo);
+    }
 }
 
 annotateShopStock();
-setInterval(annotateShopStock, 3000);
+const keepUpdatingItemInfo = setInterval(annotateShopStock, 3000);
 // overlayButtonToCommitItemsForPricing();

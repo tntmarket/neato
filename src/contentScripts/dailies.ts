@@ -48,7 +48,7 @@ async function trudysSurprise() {
 }
 
 async function bankInterest() {
-    assume(getInputByValue("Spin, spin, spin!")).click();
+    assume(getInputByValue("Collect Interest")).click();
 }
 
 async function fruitMachine() {
@@ -183,7 +183,18 @@ async function wheelOfKnowledge() {
 }
 
 async function winterKiosk() {
-    getInputByValue("Yes, I will have one please")?.click();
+    const boughtRacesToRiches = true;
+    if (boughtRacesToRiches) {
+        // Start scratching
+    } else {
+        getInputByValue("Yes, I will have one please")?.click();
+    }
+}
+
+async function meteor() {
+    const dropdown = assume($<HTMLSelectElement>('select[name="pickstep"]'));
+    dropdown.value = "1";
+    getInputByValue("Submit")?.click();
 }
 
 const linkToRoutine = {
@@ -209,6 +220,7 @@ const linkToRoutine = {
     "/medieval/wiseking.phtml": wiseKing,
     "/medieval/knowledge.phtml": wheelOfKnowledge,
     "/winter/kiosk.phtml": winterKiosk,
+    "/moon/meteor.phtml?getclose=1": meteor,
 };
 
 Object.entries(linkToRoutine).forEach(async ([link, routine]) => {

@@ -46,10 +46,7 @@ export async function buyAllProfitableItems(
 
         if (outcome.status === "OFFER_ACCEPTED") {
             boughtAnyItem = true;
-            await sleep(5000);
         }
-
-        await normalDelay(1111);
     }
 }
 
@@ -93,7 +90,7 @@ async function cycleThroughShopsUntilNoProfitableItems(
 }
 
 async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
-    const itemsToReprice = await getNextItemsToReprice(20);
+    const itemsToReprice = await getNextItemsToReprice(40);
     if (itemsToReprice.length === 0) {
         return {};
     }
@@ -154,10 +151,13 @@ async function restockAndReprice(
     }
 }
 
-const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15]);
+const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15, 98]);
+
+const CONSECUTIVE_FAILURES_BEFORE_ABORT = 10;
 
 export function ControlPanel() {
     const [shopIds, setShopIds] = useState(shopIdsSetting.get());
+    const [consecutiveFailures, setConsecutiveFailures] = useState(0);
     const [retryInfinitely, setRetryInfinitely] = useState(false);
     const [isAutomating, setIsAutomating] = useState(false);
 
@@ -198,21 +198,31 @@ export function ControlPanel() {
                 switchToUnbannedAccount,
                 recordBanTime,
             )
+                .then(() => {
+                    setConsecutiveFailures(0);
+                })
                 .catch((error) => {
-                    console.log(error);
+                    setConsecutiveFailures(
+                        (consecutiveFailures) => consecutiveFailures + 1,
+                    );
+                    console.error(error);
                 })
                 .finally(() => {
                     setIsAutomating(false);
                 });
         } else if (retryInfinitely) {
-            setIsAutomating(true);
+            if (consecutiveFailures < CONSECUTIVE_FAILURES_BEFORE_ABORT) {
+                setIsAutomating(true);
+            } else {
+                setRetryInfinitely(false);
+            }
         }
     }, [isAutomating]);
 
     return (
         <div className={`bg-base-100 ${css.controlPanel}`}>
             <OnOffToggle
-                label="Retry Infinitely"
+                label={`Keep Retrying - ${consecutiveFailures}/${CONSECUTIVE_FAILURES_BEFORE_ABORT}`}
                 checked={retryInfinitely}
                 onChange={() => {
                     setRetryInfinitely(!retryInfinitely);

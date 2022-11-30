@@ -1,4 +1,5 @@
 import { sleep } from "@src/util/randomDelay";
+import { setInterval } from "worker-timers";
 
 export function $All<E extends HTMLElement = HTMLElement>(selector: string) {
     return Array.from(document.querySelectorAll<E>(selector));

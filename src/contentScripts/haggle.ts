@@ -2,7 +2,7 @@ import { $, $All } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import { normalDelay } from "@src/util/randomDelay";
 import { getDarkestPixel } from "@src/captcha";
-import { ensureListener } from "@src/util/scriptInjection";
+import { ensureListener, onPageUnload } from "@src/util/scriptInjection";
 
 export type HaggleDetails = {
     itemName: string;
@@ -64,10 +64,7 @@ async function highlightPixel(): Promise<{ x: number; y: number }> {
     document.body.style.overflow = "hidden";
     const image = assume($<HTMLImageElement>('input[type="image"]'));
 
-    const [{ x, y }] = await Promise.all([
-        getDarkestPixel(image),
-        normalDelay(444),
-    ]);
+    const { x, y } = await getDarkestPixel(image);
 
     const captchaCoordinates = image.getBoundingClientRect();
     const clickX = captchaCoordinates.left + x + 3;
@@ -93,6 +90,10 @@ async function makeHaggleOffer(offer: number) {
 
     const { x, y } = await pixelToClick;
     clickCoordinate(x, y);
+
+    // Wait until page reloads before returning,
+    // so we don't haggle twice on the same page
+    await new Promise<void>(onPageUnload);
 }
 
 function extractNumber(element: HTMLElement): number {

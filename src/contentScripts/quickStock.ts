@@ -16,7 +16,7 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
     }
 
     const listing = (await callProcedure(getListings, itemName))[0];
-    if (listing && listing.price < 300) {
+    if (listing && listing.price < 1000) {
         const depositButton = assume(
             stockButton
                 .closest("tr")

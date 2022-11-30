@@ -1,5 +1,11 @@
 import browser from "webextension-polyfill";
 import { Tabs } from "webextension-polyfill/namespaces/tabs";
+import {
+    clearTimeout,
+    setTimeout,
+    clearInterval,
+    setInterval,
+} from "worker-timers";
 
 export async function ensureOneTab(url: string): Promise<Tabs.Tab> {
     const tabs = await browser.tabs.query({ url });

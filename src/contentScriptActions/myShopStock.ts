@@ -158,6 +158,9 @@ export async function undercutMarketPrices(): Promise<void> {
         if (newPrice !== price) {
             console.log(`Updating ${itemName} from ${price} => ${newPrice}`);
             itemNameToPrice[itemName] = newPrice;
+        } else if (newPrice > 0 && newPrice < 1000) {
+            console.log(`${itemName} is only worth ${price}, removing`);
+            itemNameToPrice[itemName] = -1;
         }
     }
 

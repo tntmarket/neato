@@ -1,6 +1,6 @@
 import { assume } from "@src/util/typeAssertions";
 import { $ } from "@src/util/domHelpers";
-import { randomPercentRange } from "@src/util/randomDelay";
+import {normalDelay, randomPercentRange} from "@src/util/randomDelay";
 
 function gameIsAlmostOver() {
     // 100% at the start, to 0% when there is 1 player left
@@ -51,19 +51,19 @@ function getStartButton() {
     }
 }
 
-function sleep(ms: number) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
-}
-
 async function advanceForward(
     aFewClicks = 5,
     aLotOfClicks = 17,
     waitBetweenRapidClicks = 98,
     waitAfterPageLoad = 912,
 ) {
-    await sleep(randomPercentRange(waitAfterPageLoad, 0.8));
+    await normalDelay(waitAfterPageLoad);
+
+    // Only play on main account
+    if (!$(".user")?.innerText?.includes("kraaab")) {
+        clearInterval(retryInterval);
+        return;
+    }
 
     const nextOrStartButton = getInput("Play Again") || getStartButton();
     if (nextOrStartButton) {
@@ -82,16 +82,12 @@ async function advanceForward(
             randomPercentRange(gameIsAlmostOver() ? aFewClicks : aLotOfClicks),
         );
         for (let i = 0; i < numberOfClicks; i += 1) {
-            await sleep(randomPercentRange(waitBetweenRapidClicks));
+            await normalDelay(waitBetweenRapidClicks);
             nextButton.click();
         }
     }
 
     if (assume($("#content")).innerText.includes("SO BORED")) {
-        clearInterval(retryInterval);
-    }
-    // Only play on main account
-    if (!$(".user")?.innerText?.includes("kraaab")) {
         clearInterval(retryInterval);
     }
 }

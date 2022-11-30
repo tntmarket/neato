@@ -17,8 +17,14 @@ export function ensureListener<T extends (...args: any[]) => any>(
             console.error("ERROR", error);
         }
     });
+    onPageUnload(() => {
+        browser.runtime.onMessage.removeListener(handleMessage);
+    });
+}
+
+export function onPageUnload(onUnload: () => void) {
     window.addEventListener("unload", () => {
         console.log("UNLOAD");
-        browser.runtime.onMessage.removeListener(handleMessage);
+        onUnload();
     });
 }

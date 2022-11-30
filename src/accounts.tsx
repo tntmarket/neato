@@ -74,6 +74,8 @@ export function useAccounts(): UseAccounts {
             action: "LOGIN_ACCOUNT",
             ...account,
         });
+        await sleep(100);
+        await waitForTabStatus(tabId, "complete");
     }
 
     function recordBanTime(): BanTimes {
