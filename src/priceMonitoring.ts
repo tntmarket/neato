@@ -4,6 +4,10 @@ import { ljs } from "@src/util/logging";
 import { getNpcStock } from "@src/database/npcStock";
 import { getJellyNeoEntries } from "@src/database/jellyNeo";
 import { getAllStockedItems } from "@src/database/myShopStock";
+import {
+    MIN_PROFIT,
+    MIN_PROFIT_TO_QUICK_BUY,
+} from "@src/autoRestock/autoRestockConfig";
 
 type RankingResult = {
     itemName: string;
@@ -40,14 +44,14 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
                         itemName,
                         price1: 0,
                         price2: 0,
-                        daysUntilStale: -999, // always prioritize putting all our items on sale
+                        daysUntilStale: -9999, // always prioritize putting all our items on sale
                     });
                 } else if (npcStockItemNames.has(itemName)) {
                     rankingResults.push({
                         itemName,
                         price1: 0,
                         price2: 0,
-                        daysUntilStale: -99, // always prioritize price checking never-seen-before npc items
+                        daysUntilStale: -999, // always prioritize price checking never-seen-before npc items
                     });
                 } else {
                     rankingResults.push({
@@ -68,8 +72,8 @@ export async function getNextItemsToReprice(limit = 20): Promise<string[]> {
                     itemName,
                     price1: listings[0].price,
                     price2: listings[1]?.price,
-                    // Always keep our shop inventory at least 1 day fresh
-                    daysUntilStale: 1 - daysAgo(listings[0].lastSeen),
+                    // Always keep our shop inventory fresh
+                    daysUntilStale: 0.5 - daysAgo(listings[0].lastSeen),
                 });
                 return;
             }
@@ -130,8 +134,10 @@ export function estimateDaysToImpactfulPriceChange(
         20 * likelyToStayExpensive(marketPrice) +
         // Expedite if the listings are shallow
         -4 * liquidityIsShallow(listings) +
-        // Expedite if it's in a price we often invest in
-        -3 * isLikelyToInvestIn(marketPrice)
+        // Expedite if it might cross the ignore/buy threshold
+        -3 * proximityToBuyThreshold(marketPrice) +
+        // Expedite if it might cross the buy/quick-buy threshold
+        -2 * proximityToQuickBuyThreshold(marketPrice)
     );
 }
 
@@ -152,7 +158,6 @@ function likelyToStayJunk(marketPrice: number) {
 }
 
 // A shallow liquidity means prices can swing quickly.
-// It can also mean we got incomplete results in the previous scrape
 function liquidityIsShallow(listings: Listing[]) {
     if (!listings[1]) {
         if (listings[0].userName === "NOT_A_REAL_USER!") {
@@ -190,13 +195,49 @@ function likelyToStayExpensive(marketPrice: number) {
     return Math.log10(marketPrice) - 4;
 }
 
-// We end up buying a lot of items in the mid 1000s,
-// so we're highly exposed to small price fluctuations.
-// Precise prices are particularly valuable in this range.
-function isLikelyToInvestIn(marketPrice: number) {
-    if (marketPrice < 2000 || marketPrice > 7000) {
+function proximityToBuyThreshold(marketPrice: number) {
+    /**
+     * Example: If market price is 1000, typical profit will be 0,
+     * which is -100% of the threshold
+     *
+     * Example: If market price is 3000, typical profit will be 2000,
+     * which is exactly on buy threshold
+     *
+     * Example: If market price is 5000, typical profit will be 4000,
+     * which is +100% of the threshold
+     */
+    const typicalNpcPrice = 1000;
+    const typicalProfit = Math.max(0, marketPrice - typicalNpcPrice);
+    const percentageFromThreshold =
+        Math.abs(typicalProfit - MIN_PROFIT) / MIN_PROFIT;
+
+    if (percentageFromThreshold > 1) {
         return 0;
     }
 
-    return 1;
+    return 1 - percentageFromThreshold;
+}
+
+function proximityToQuickBuyThreshold(marketPrice: number) {
+    /**
+     * Example: If market price is 7000, typical profit will be 5000,
+     * which is -50% of the threshold
+     *
+     * Example: If market price is 12000, typical profit will be 10000,
+     * which is exactly on the quick-buy threshold
+     *
+     * Example: If market price is 17000, typical profit will be 15000,
+     * which is +50% of the threshold
+     */
+    const typicalNpcPrice = 2000;
+    const typicalProfit = Math.max(0, marketPrice - typicalNpcPrice);
+    const percentageFromThreshold =
+        Math.abs(typicalProfit - MIN_PROFIT_TO_QUICK_BUY) /
+        MIN_PROFIT_TO_QUICK_BUY;
+
+    if (percentageFromThreshold > 0.5) {
+        return 0;
+    }
+
+    return (1 - percentageFromThreshold) / 0.5;
 }

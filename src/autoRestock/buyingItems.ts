@@ -16,6 +16,8 @@ import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 import {
     MIN_PROFIT,
     MIN_PROFIT_RATIO,
+    MIN_PROFIT_RATIO_TO_QUICK_BUY,
+    MIN_PROFIT_TO_QUICK_BUY,
 } from "@src/autoRestock/autoRestockConfig";
 import { getJellyNeoEntry } from "@src/database/jellyNeo";
 
@@ -56,7 +58,8 @@ async function estimateProfitability(
             // Fall back to jelly neo if we don't know the price
             const jellyNeoEntry = await getJellyNeoEntry(itemName);
             // Pretend item is worth 10000 if jelly neo doesn't know the price
-            const jellyNeoPrice = jellyNeoEntry?.price || 10000;
+            const jellyNeoPrice =
+                jellyNeoEntry?.price || MIN_PROFIT_RATIO_TO_QUICK_BUY;
 
             // Fall back to jelly neo if we don't know the price
             const marketPrice = listing ? listing.price : jellyNeoPrice;
@@ -114,8 +117,9 @@ function isWorth({
     return (
         futureHaggleProfit > MIN_PROFIT &&
         futureHaggleProfitRatio > MIN_PROFIT_RATIO &&
+        // If the price is too stale, don't trust it until it's refreshed
         daysToImpactfulPriceChange > 0 &&
-        alreadyStocked < 10
+        alreadyStocked < 7
     );
 }
 
@@ -152,7 +156,9 @@ export async function getNextOffer({
 
     const profit = (await getMarketPrice(itemName)) - stockPrice;
     const profitRatio = profit / stockPrice;
-    const probablyHighlyContested = profit > 10000 && profitRatio > 0.5;
+    const probablyHighlyContested =
+        profit > MIN_PROFIT_TO_QUICK_BUY &&
+        profitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY;
     if (probablyHighlyContested) {
         return makeHumanTypable(currentAsk);
     }
@@ -260,7 +266,7 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
             nextOffer = situation.currentAsk;
         }
         // Time to type in offer and click captcha
-        await normalDelay(1111);
+        await normalDelay(888);
         await session.makeOffer(nextOffer);
     }
 

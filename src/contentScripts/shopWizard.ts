@@ -101,6 +101,7 @@ export type SearchShopWizard = {
 export type ShopWizardResult = {
     sections: ShopWizardSection[];
     tooManySearches?: true;
+    onFairyQuest?: true;
 };
 
 export type ShopWizardSection = ListingData[];
@@ -108,6 +109,12 @@ export type ShopWizardSection = ListingData[];
 function tooManySearches() {
     return assume($("#shopWizardFormResults")).innerText.includes(
         "too many searches",
+    );
+}
+
+function onFairyQuest() {
+    return assume($(".container")).innerText.includes(
+        "You're working for a faerie",
     );
 }
 
@@ -146,6 +153,14 @@ async function searchShopWizard({
             sections[getSection(listings[0].userName)] = listings;
             cheapestPrice = Math.min(cheapestPrice, listings[0].price);
         }
+    }
+
+    if (onFairyQuest()) {
+        return {
+            // Discard the whole search, rather than risk incorrect prices, by using irrelevant sections
+            sections: [],
+            onFairyQuest: true,
+        };
     }
 
     let cheapestPrice = 1_000_000;

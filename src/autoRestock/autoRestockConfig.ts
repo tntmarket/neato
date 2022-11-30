@@ -1,2 +1,7 @@
 export const MIN_PROFIT = 2000;
 export const MIN_PROFIT_RATIO = 0.5;
+
+export const MIN_PROFIT_TO_QUICK_BUY = 10000;
+export const MIN_PROFIT_RATIO_TO_QUICK_BUY = 0.4;
+
+export const ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW = 10000;

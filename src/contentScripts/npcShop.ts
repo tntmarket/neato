@@ -8,8 +8,11 @@ import { callProcedure } from "@src/controlPanel/procedure";
 import { ensureListener } from "@src/util/scriptInjection";
 import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 import {
+    ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW,
     MIN_PROFIT,
     MIN_PROFIT_RATIO,
+    MIN_PROFIT_RATIO_TO_QUICK_BUY,
+    MIN_PROFIT_TO_QUICK_BUY,
 } from "@src/autoRestock/autoRestockConfig";
 import { getJellyNeoEntry } from "@src/database/jellyNeo";
 
@@ -85,7 +88,8 @@ async function annotateShopItem(item: HTMLElement) {
     const listings = await callProcedure(getListings, name);
     const jellyNeoEntry = await callProcedure(getJellyNeoEntry, name);
     // Pretend item is worth 10000 if jelly neo doesn't know the price
-    const jellyNeoPrice = jellyNeoEntry?.price || 10000;
+    const jellyNeoPrice =
+        jellyNeoEntry?.price || ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW;
 
     const extraInfo = getInfoContainer(item);
     item.style.backgroundColor = "";
@@ -140,7 +144,10 @@ async function annotateShopItem(item: HTMLElement) {
     haggleBuySellLabel.append(marketPriceLink);
     extraInfo.append(haggleBuySellLabel);
 
-    if (profit > 10000 && profitRatio > 0.4) {
+    if (
+        profit > MIN_PROFIT_TO_QUICK_BUY &&
+        profitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY
+    ) {
         item.style.backgroundColor = "lightcoral";
     } else if (
         haggleProfit > MIN_PROFIT &&

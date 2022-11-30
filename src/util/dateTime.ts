@@ -1,10 +1,11 @@
+const MILLIS_IN_MINUTE = 1000 * 60;
+const MILLIS_IN_HOUR = MILLIS_IN_MINUTE * 60;
+
 export function daysAgo(epochMillis: number) {
-    return (
-        Math.round(((Date.now() - epochMillis) / (1000 * 60 * 60 * 24)) * 10) /
-        10
-    );
+    return hoursAgo(epochMillis) / 24;
 }
 
 export function hoursAgo(epochMillis: number) {
-    return (Date.now() - epochMillis) / (1000 * 60 * 60);
+    const millisAgo = Date.now() - epochMillis;
+    return millisAgo / MILLIS_IN_HOUR;
 }

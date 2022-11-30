@@ -12,7 +12,7 @@ export async function checkPrice(
     itemName: string,
 ): Promise<{ tooManySearches?: true }> {
     const numberOwned = await getCurrentShopStock(itemName);
-    const { sections, tooManySearches } = await searchShopWizard(
+    const { sections, tooManySearches, onFairyQuest } = await searchShopWizard(
         numberOwned > 0
             ? {
                   itemName,
@@ -31,8 +31,8 @@ export async function checkPrice(
               },
     );
 
-    if (tooManySearches) {
-        return { tooManySearches };
+    if (tooManySearches || onFairyQuest) {
+        return { tooManySearches: true };
     }
 
     for (const listings of sections) {
