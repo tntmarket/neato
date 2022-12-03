@@ -17,6 +17,7 @@ import { quickStockItems } from "@src/contentScriptActions/quickStock";
 import { ListingBrowser } from "@src/controlPanel/ListingBrowser";
 import { MyShopStockBrowser } from "@src/controlPanel/MyShopStockBrowser";
 import { withdrawShopTill } from "@src/contentScriptActions/shopTill";
+import { PurchaseLog } from "@src/controlPanel/PurchaseLog";
 
 let latestAutomationSessionId = 0;
 
@@ -154,7 +155,7 @@ async function restockAndReprice(
     }
 }
 
-const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15, 98]);
+const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15, 98, 4]);
 
 const CONSECUTIVE_FAILURES_BEFORE_ABORT = 10;
 
@@ -253,6 +254,7 @@ export function ControlPanel() {
             {accountsUI}
             <ListingBrowser />
             <MyShopStockBrowser />
+            <PurchaseLog />
         </div>
     );
 }

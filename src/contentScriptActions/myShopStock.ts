@@ -10,6 +10,7 @@ import { getListings, Listing } from "@src/database/listings";
 import { NameToPrice } from "@src/contentScripts/myShopStock";
 import { normalDelay } from "@src/util/randomDelay";
 import { waitForTabStatus } from "@src/util/tabControl";
+import { underCut } from "@src/autoRestock/buyingItems";
 
 function myShopStockUrl(page: number): string {
     if (page === 1) {
@@ -80,10 +81,6 @@ async function setMyShopStockPrices(
     return stockedItems;
 }
 
-function underCut(marketPrice: number) {
-    return Math.max(marketPrice - (marketPrice % 100) - 1, 1);
-}
-
 function getMarketPriceEntryExcludingSelf(listings: Listing[]): Listing {
     if (lowestPriceIsSelf(listings)) {
         return listings[1];
@@ -129,6 +126,13 @@ export async function undercutMarketPrices(): Promise<void> {
         if (newPrice > 0 && newPrice < 1000) {
             console.log(`${itemName} is only worth ${newPrice}, removing`);
             priceUpdates[itemName] = -1;
+        } else if (price > 0 && newPrice > price) {
+            // Refuse to raise prices, because selling faster is more valuable
+            // than raising the prices, and possibly not being the cheapest
+            // on the market anymore
+            console.log(
+                `Refusing to raise price of ${itemName} from ${price} => ${newPrice}`,
+            );
         } else if (newPrice !== price) {
             console.log(`Updating ${itemName} from ${price} => ${newPrice}`);
             priceUpdates[itemName] = newPrice;

@@ -30,7 +30,7 @@ export function getAllStockedItems(): Promise<StockedItem[]> {
     });
 }
 
-export function recordPurchase(itemName: string): Promise<void> {
+export function incrementStock(itemName: string): Promise<void> {
     return db.transaction("rw", db.myShopStock, async () => {
         let stockItem = await db.myShopStock.where({ itemName }).first();
         if (!stockItem) {

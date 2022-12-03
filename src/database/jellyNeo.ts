@@ -12,15 +12,14 @@ export type JellyNeoEntry = JellyNeoEntryData & {
 
 export async function putJellyNeoEntries(entries: JellyNeoEntryData[]) {
     const now = Date.now();
-    return db.transaction("rw", db.jellyNeo, async () => {
-        await db.jellyNeo.clear();
-        await db.jellyNeo.bulkPut(
+    return db.transaction("rw", db.jellyNeo, async () =>
+        db.jellyNeo.bulkPut(
             entries.map((entry) => ({
                 ...entry,
                 lastSeen: now,
             })),
-        );
-    });
+        ),
+    );
 }
 
 export async function getJellyNeoEntry(

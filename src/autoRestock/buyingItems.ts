@@ -9,7 +9,7 @@ import { getNpcStockPrice, NpcStockData } from "@src/database/npcStock";
 import { assume } from "@src/util/typeAssertions";
 import { ljs } from "@src/util/logging";
 import { normalDelay, sleep } from "@src/util/randomDelay";
-import { getCurrentShopStock, recordPurchase } from "@src/database/myShopStock";
+import { getCurrentShopStock, incrementStock } from "@src/database/myShopStock";
 import browser from "webextension-polyfill";
 import { waitForTabStatus } from "@src/util/tabControl";
 import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
@@ -22,6 +22,7 @@ import {
     MIN_PROFIT_TO_QUICK_BUY,
 } from "@src/autoRestock/autoRestockConfig";
 import { getJellyNeoEntry } from "@src/database/jellyNeo";
+import { recordPurchase } from "@src/database/purchaseLog";
 
 type BuyOpportunity = {
     itemName: string;
@@ -38,10 +39,23 @@ type BuyOpportunity = {
     jellyNeoPrice: number;
 };
 
+export function underCut(marketPrice: number) {
+    if (marketPrice > 100000) {
+        // 637000 -> 629999
+        return Math.max(marketPrice - (marketPrice % 10000) - 1, 1);
+    }
+    if (marketPrice > 10000) {
+        // 37500 -> 36999
+        return Math.max(marketPrice - (marketPrice % 1000) - 1, 1);
+    }
+    // 5750 -> 5699
+    return Math.max(marketPrice - (marketPrice % 100) - 1, 1);
+}
+
 function undercutNTimes(price: number, timesToUndercut: number) {
     let underCutPrice = price;
     for (let i = 0; i < timesToUndercut; i += 1) {
-        underCutPrice = Math.min(underCutPrice * 0.95, underCutPrice - 100);
+        underCutPrice = underCut(underCutPrice);
     }
     return underCutPrice;
 }
@@ -262,7 +276,11 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
             return { status: "SOLD_OUT" };
         }
         if (situation.status === "OFFER_ACCEPTED") {
-            await recordPurchase(buyOpportunity.itemName);
+            await incrementStock(buyOpportunity.itemName);
+            await recordPurchase({
+                itemName: buyOpportunity.itemName,
+                price: nextOffer,
+            });
             // Wait at least 5s before returning to shop, cause we can
             // only buy a max of 1 item every 5s
             await normalDelay(6666);

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { getAllStockedItems, StockedItem } from "@src/database/myShopStock";
+import { getAllStockedItems } from "@src/database/myShopStock";
 
 export function MyShopStockBrowser() {
     const [itemName, setItemName] = useState("");

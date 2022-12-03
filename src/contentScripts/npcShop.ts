@@ -110,6 +110,8 @@ async function annotateShopItem(item: HTMLElement) {
             -daysToImpactfulPriceChange / 7,
             1,
         )})`;
+    } else {
+        extraInfo.style.background = "none";
     }
 
     const haggleLabel = document.createElement("p");
