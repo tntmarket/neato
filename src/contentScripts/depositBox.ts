@@ -48,9 +48,21 @@ async function annotateWarehouseRows() {
         }
         if (HIGHLIGHTED_ITEMS.includes(itemName)) {
             row.style.background = "orange";
-        } else if (HIDDEN_ITEMS.includes(itemName)) {
+            continue;
+        }
+
+        if (HIDDEN_ITEMS.includes(itemName)) {
             row.style.display = "none";
-        } else if (price >= MIN_PROFIT) {
+            continue;
+        }
+
+        if (price < MIN_PROFIT) {
+            row.style.opacity = "0.2";
+            row.style.display = "none";
+            continue;
+        }
+
+        if (price >= MIN_PROFIT) {
             const currentStock = await callProcedure(
                 getCurrentShopStock,
                 itemName,
@@ -63,10 +75,11 @@ async function annotateWarehouseRows() {
                     quantity,
                 )}`;
                 removeInput.dataset.remove_val = "y";
+                continue;
             }
-        } else {
-            row.style.opacity = "0.2";
         }
+
+        row.style.display = "none";
     }
 }
 
