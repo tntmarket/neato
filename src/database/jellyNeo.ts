@@ -10,7 +10,23 @@ export type JellyNeoEntry = JellyNeoEntryData & {
     lastSeen: number;
 };
 
+type JellyNeoEntryMap = Map<string, JellyNeoEntry>;
+
+let jellyNeoEntriesPromise: Promise<JellyNeoEntryMap> | null = null;
+
+async function rebuildCache() {
+    const cachedEntries: JellyNeoEntryMap = new Map();
+    console.log("Re-building JellyNeo cache");
+    await db.transaction("r", db.jellyNeo, () =>
+        db.jellyNeo.each((entry) => {
+            cachedEntries.set(entry.itemName, entry);
+        }),
+    );
+    return cachedEntries;
+}
+
 export async function putJellyNeoEntries(entries: JellyNeoEntryData[]) {
+    jellyNeoEntriesPromise = null;
     const now = Date.now();
     return db.transaction("rw", db.jellyNeo, async () =>
         db.jellyNeo.bulkPut(
@@ -25,18 +41,19 @@ export async function putJellyNeoEntries(entries: JellyNeoEntryData[]) {
 export async function getJellyNeoEntry(
     itemName: string,
 ): Promise<JellyNeoEntry | undefined> {
-    return db.transaction("r", db.jellyNeo, () =>
-        db.jellyNeo.where({ itemName }).first(),
-    );
+    return (await getJellyNeoEntries()).get(itemName);
 }
 
-export async function getJellyNeoEntries(): Promise<JellyNeoEntry[]> {
-    return db.transaction("r", db.jellyNeo, () => db.jellyNeo.toArray());
+export async function getJellyNeoEntries(): Promise<JellyNeoEntryMap> {
+    if (!jellyNeoEntriesPromise) {
+        jellyNeoEntriesPromise = rebuildCache();
+    }
+    return jellyNeoEntriesPromise;
 }
 
 export async function setItemMonitorList(
     itemsFromJellyNeo: JellyNeoEntryData[],
-): Promise<JellyNeoEntry[]> {
+): Promise<JellyNeoEntryMap> {
     await putJellyNeoEntries(itemsFromJellyNeo);
     return getJellyNeoEntries();
 }

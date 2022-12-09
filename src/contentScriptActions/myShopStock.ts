@@ -11,6 +11,9 @@ import { NameToPrice } from "@src/contentScripts/myShopStock";
 import { normalDelay } from "@src/util/randomDelay";
 import { waitForTabStatus } from "@src/util/tabControl";
 import { underCut } from "@src/autoRestock/buyingItems";
+import { DAYS_BEFORE_REPRICING_SHOP_STOCK } from "@src/autoRestock/autoRestockConfig";
+import { daysAgo } from "@src/util/dateTime";
+import { getJellyNeoEntry } from "@src/database/jellyNeo";
 
 function myShopStockUrl(page: number): string {
     if (page === 1) {
@@ -101,6 +104,24 @@ async function getUnderCutPrice(
 
     if (listings.length === 0) {
         console.log(`Don't know the price of ${itemName} yet`);
+        return price;
+    }
+
+    if (listings[0].userName === "0_NOT_A_REAL_USER!") {
+        const jellyNeoEntry = await getJellyNeoEntry(itemName);
+        const jellyNeoPrice = jellyNeoEntry?.price || 1_100_000_000;
+        if (jellyNeoPrice > 1_100_000_000) {
+            console.log(
+                `${itemName} is possibly unbuyable, don't put on shelf`,
+            );
+            return price;
+        }
+    }
+
+    if (daysAgo(listings[0].lastSeen) > DAYS_BEFORE_REPRICING_SHOP_STOCK) {
+        console.log(
+            `Price is older than ${DAYS_BEFORE_REPRICING_SHOP_STOCK}, recheck before setting the price`,
+        );
         return price;
     }
 

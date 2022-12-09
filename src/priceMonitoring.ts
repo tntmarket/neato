@@ -5,6 +5,7 @@ import { getNpcStock } from "@src/database/npcStock";
 import { getJellyNeoEntries } from "@src/database/jellyNeo";
 import { getAllStockedItems } from "@src/database/myShopStock";
 import {
+    DAYS_BEFORE_REPRICING_SHOP_STOCK,
     MIN_PROFIT,
     MIN_PROFIT_TO_QUICK_BUY,
 } from "@src/autoRestock/autoRestockConfig";
@@ -22,7 +23,7 @@ function itemNameSet(items: { itemName: string }[]) {
 
 export async function getNextItemsToReprice(limit: number): Promise<string[]> {
     const itemsToMonitor = await getJellyNeoEntries();
-    const itemNamesToMonitor = itemNameSet(itemsToMonitor);
+    const itemNamesToMonitor = new Set(itemsToMonitor.keys());
 
     const myStockedItems = await getAllStockedItems();
     const myStockedItemNames = itemNameSet(myStockedItems);
@@ -59,7 +60,7 @@ export async function getNextItemsToReprice(limit: number): Promise<string[]> {
                         itemName,
                         price1: 0,
                         price2: 0,
-                        daysUntilStale: -1,
+                        daysUntilStale: 0,
                     });
                 }
                 return;
@@ -74,7 +75,9 @@ export async function getNextItemsToReprice(limit: number): Promise<string[]> {
                     price1: listings[0].price,
                     price2: listings[1]?.price,
                     // Always keep our shop inventory fresh
-                    daysUntilStale: 0.5 - daysAgo(listings[0].lastSeen),
+                    daysUntilStale:
+                        DAYS_BEFORE_REPRICING_SHOP_STOCK -
+                        daysAgo(listings[0].lastSeen),
                 });
             } else if (npcStockItemNames.has(itemName)) {
                 rankingResults.push({
@@ -135,7 +138,8 @@ export function estimateDaysToImpactfulPriceChange(
     const marketPrice = listings[0].price;
 
     return (
-        7 +
+        // Generally keep prices 2 weeks fresh
+        14 +
         // 60 days to check 100np items
         // 42 days to check 200np items
         // 18 days to check 500np items

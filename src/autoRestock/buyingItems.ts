@@ -16,6 +16,7 @@ import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 import {
     ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW,
     MAX_COPIES_TO_SHELVE,
+    MAX_COPIES_TO_SHELVE_IF_VALUABLE,
     MIN_PROFIT,
     MIN_PROFIT_RATIO,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
@@ -142,11 +143,11 @@ function isWorth({
         futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY &&
         futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY;
     if (isVeryProfitable) {
-        // Buy up to 10 copies of very valuable items
-        return alreadyStocked < 10;
+        // Buy more copies of very valuable items
+        return alreadyStocked < MAX_COPIES_TO_SHELVE_IF_VALUABLE;
     }
 
-    // Buy up to 5 copies of marginally profitable items
+    // Don't over invest in any one items
     return alreadyStocked < MAX_COPIES_TO_SHELVE;
 }
 

@@ -68,6 +68,10 @@
         {
             "matches": ["https://www.neopets.com/haggle.phtml*"],
             "js": ["js/haggle.js"]
+        },
+        {
+            "matches": ["https://www.neopets.com/dome/arena.phtml*"],
+            "js": ["js/battledome.js"]
         }
     ],
     "background": {

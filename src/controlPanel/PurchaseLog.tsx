@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { getMarketPrice } from "@src/database/listings";
 import { underCut } from "@src/autoRestock/buyingItems";
+import { getJellyNeoEntry } from "@src/database/jellyNeo";
 
 dayjs.extend(relativeTime);
 
@@ -15,12 +16,16 @@ export function PurchaseLog() {
             return Promise.all(
                 purchases.map(async (purchase) => {
                     const marketPrice = await getMarketPrice(purchase.itemName);
+                    const jellyNeoEntry = await getJellyNeoEntry(
+                        purchase.itemName,
+                    );
                     return {
                         ...purchase,
                         profit:
                             marketPrice > 0
                                 ? underCut(marketPrice) - purchase.price
                                 : 0,
+                        rarity: jellyNeoEntry?.rarity || 0,
                     };
                 }),
             );
@@ -41,6 +46,7 @@ export function PurchaseLog() {
                 <thead>
                     <tr>
                         <th>Item ({purchasesWithProfit.length})</th>
+                        <th>Rarity</th>
                         <th>Price ({totalCost})</th>
                         <th>Profit ({totalProfit})</th>
                         <th>Purchase Time</th>
@@ -50,6 +56,7 @@ export function PurchaseLog() {
                     {purchasesWithProfit.map((purchase) => (
                         <tr key={purchase.purchaseTime}>
                             <th>{purchase.itemName}</th>
+                            <td>{purchase.rarity}</td>
                             <td>{purchase.price}</td>
                             <td>{purchase.profit}</td>
                             <td>{dayjs(purchase.purchaseTime).fromNow()}</td>

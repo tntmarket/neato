@@ -18,6 +18,11 @@ import { ListingBrowser } from "@src/controlPanel/ListingBrowser";
 import { MyShopStockBrowser } from "@src/controlPanel/MyShopStockBrowser";
 import { withdrawShopTill } from "@src/contentScriptActions/shopTill";
 import { PurchaseLog } from "@src/controlPanel/PurchaseLog";
+import {
+    MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP,
+    TIME_BETWEEN_REFRESHES,
+    TIME_BETWEEN_RESTOCK_CYCLES,
+} from "@src/autoRestock/autoRestockConfig";
 
 let latestAutomationSessionId = 0;
 
@@ -53,12 +58,11 @@ export async function buyAllProfitableItems(
     }
 }
 
-const MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP = 1;
-
 async function cycleThroughShopsUntilNoProfitableItems(
     shopIds: number[],
-): Promise<(BuyOutcome & { boughtAnyItem: boolean }) | null> {
+): Promise<boolean> {
     latestAutomationSessionId += 1;
+    let boughtAnyItem = false;
     const automationSessionId = latestAutomationSessionId;
     for (
         let numTimeWithoutBuy = 0;
@@ -73,23 +77,24 @@ async function cycleThroughShopsUntilNoProfitableItems(
 
             if (outcome.boughtAnyItem) {
                 numTimeWithoutBuy = 0;
+                boughtAnyItem = true;
             }
 
             if (outcome.status === "OUT_OF_MONEY") {
-                return outcome;
+                return boughtAnyItem;
             }
 
             if (outcome.status === "STUCK_IN_LOOP") {
-                return outcome;
+                return boughtAnyItem;
             }
 
             if (outcome.status === "NOTHING_TO_BUY") {
                 // Wait before cycling to the next shop
-                await normalDelay(5555);
+                await normalDelay(TIME_BETWEEN_REFRESHES);
             }
         }
     }
-    return null;
+    return boughtAnyItem;
 }
 
 async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
@@ -135,8 +140,13 @@ async function restockAndReprice(
 
     if (loggedIntoMainAccount) {
         await withdrawShopTill();
-        await cycleThroughShopsUntilNoProfitableItems(shopIds);
         await quickStockItems();
+        const boughtAnyItem = await cycleThroughShopsUntilNoProfitableItems(
+            shopIds,
+        );
+        if (boughtAnyItem) {
+            await quickStockItems();
+        }
         await undercutMarketPrices();
 
         const tooManySearches = await repriceItems();
@@ -145,7 +155,7 @@ async function restockAndReprice(
             if (!unbannedAccount) {
                 // If we have no accounts available, just wait instead of
                 // immediately starting another restocking run
-                await waitTillNextHour();
+                await normalDelay(TIME_BETWEEN_RESTOCK_CYCLES);
             }
         }
     } else {
