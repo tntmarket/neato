@@ -25,7 +25,11 @@ export async function getNextItemsToReprice(limit: number): Promise<string[]> {
     const itemsToMonitor = await getJellyNeoEntries();
     const itemNamesToMonitor = new Set(itemsToMonitor.keys());
 
+    const stockedItemToPrice = new Map<string, number>();
     const myStockedItems = await getAllStockedItems();
+    myStockedItems.forEach((stock) => {
+        stockedItemToPrice.set(stock.itemName, stock.price);
+    });
     const myStockedItemNames = itemNameSet(myStockedItems);
     myStockedItemNames.forEach((itemName) => itemNamesToMonitor.add(itemName));
 
@@ -38,68 +42,61 @@ export async function getNextItemsToReprice(limit: number): Promise<string[]> {
     console.time("Calculate pricing priority");
     await Promise.all(
         [...itemNamesToMonitor].map(async (itemName) => {
-            const listings = await getListings(itemName, 2);
+            const listings = await getListings(itemName);
 
-            if (listings.length === 0) {
-                if (myStockedItemNames.has(itemName)) {
-                    rankingResults.push({
-                        itemName,
-                        price1: 0,
-                        price2: 0,
-                        daysUntilStale: -9999, // always prioritize putting all our items on sale
-                    });
-                } else if (npcStockItemNames.has(itemName)) {
-                    rankingResults.push({
-                        itemName,
-                        price1: 0,
-                        price2: 0,
-                        daysUntilStale: -999, // always prioritize price checking never-seen-before npc items
-                    });
-                } else {
-                    rankingResults.push({
-                        itemName,
-                        price1: 0,
-                        price2: 0,
-                        daysUntilStale: 0,
-                    });
-                }
-                return;
+            // Highest priority - putting all our items on sale
+            if (stockedItemToPrice.get(itemName) === 0) {
+                return rankingResults.push({
+                    itemName,
+                    price1: 0,
+                    price2: 0,
+                    daysUntilStale: -9999,
+                });
             }
 
-            const estimatedDaysUntilPriceChange =
-                estimateDaysToImpactfulPriceChange(listings);
+            // High priority - price checking never-seen-before items that are currently in npc shops
+            if (npcStockItemNames.has(itemName) && listings.length === 0) {
+                return rankingResults.push({
+                    itemName,
+                    price1: 0,
+                    price2: 0,
+                    daysUntilStale: -999,
+                });
+            }
 
+            // Medium priority - price checking items with unknown price
+            if (listings.length === 0) {
+                return rankingResults.push({
+                    itemName,
+                    price1: 0,
+                    price2: 0,
+                    daysUntilStale: 0,
+                });
+            }
+
+            // Ensure our own shop items are the lowest on the market
             if (myStockedItemNames.has(itemName)) {
-                rankingResults.push({
+                return rankingResults.push({
                     itemName,
                     price1: listings[0].price,
                     price2: listings[1]?.price,
-                    // Always keep our shop inventory fresh
                     daysUntilStale:
                         DAYS_BEFORE_REPRICING_SHOP_STOCK -
                         daysAgo(listings[0].lastSeen),
                 });
-            } else if (npcStockItemNames.has(itemName)) {
-                rankingResults.push({
-                    itemName,
-                    price1: listings[0].price,
-                    price2: listings[1]?.price,
-                    daysUntilStale:
-                        estimatedDaysUntilPriceChange -
-                        daysAgo(listings[0].lastSeen) -
-                        // Slightly expedite items that are currently stocked
-                        2,
-                });
-            } else {
-                rankingResults.push({
-                    itemName,
-                    price1: listings[0].price,
-                    price2: listings[1]?.price,
-                    daysUntilStale:
-                        estimatedDaysUntilPriceChange -
-                        daysAgo(listings[0].lastSeen),
-                });
             }
+
+            return rankingResults.push({
+                itemName,
+                price1: listings[0].price,
+                price2: listings[1]?.price,
+                daysUntilStale:
+                    estimateDaysToImpactfulPriceChange(listings) -
+                    daysAgo(listings[0].lastSeen) -
+                    // Expedite items that are currently stocked, so we can potentially
+                    // identify profitable buys before the shop full-clears
+                    (npcStockItemNames.has(itemName) ? 5 : 0),
+            });
         }),
     );
     console.timeEnd("Calculate pricing priority");

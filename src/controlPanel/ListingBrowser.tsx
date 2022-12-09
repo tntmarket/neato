@@ -9,7 +9,7 @@ dayjs.extend(relativeTime);
 export function ListingBrowser() {
     const [itemName, setItemName] = useState("");
     const listings = useLiveQuery(
-        () => getListings(itemName, null),
+        () => getListings(itemName, 10),
         [itemName],
         [],
     );
@@ -25,7 +25,7 @@ export function ListingBrowser() {
                         className="input input-bordered input-primary w-full max-w-xs"
                         value={itemName}
                         onChange={(event) => {
-                            setItemName(event.target.value.trim());
+                            setItemName(event.target.value);
                         }}
                     />
                 </label>

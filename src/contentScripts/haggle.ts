@@ -1,6 +1,5 @@
 import { $, $All } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
-import { normalDelay } from "@src/util/randomDelay";
 import { getDarkestPixel } from "@src/captcha";
 import { ensureListener, onPageUnload } from "@src/util/scriptInjection";
 
@@ -16,6 +15,9 @@ export type HaggleSituation =
       })
     | {
           status: "OUT_OF_MONEY";
+      }
+    | {
+          status: "OUT_OF_SPACE";
       }
     | {
           status: "SOLD_OUT";
@@ -115,6 +117,11 @@ async function getHaggleSituation(): Promise<HaggleSituation> {
     if (text.includes("don't have that kind of money")) {
         return {
             status: "OUT_OF_MONEY",
+        };
+    }
+    if (text.includes("you can only carry a maximum")) {
+        return {
+            status: "OUT_OF_SPACE",
         };
     }
 

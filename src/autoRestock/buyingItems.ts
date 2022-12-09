@@ -223,6 +223,9 @@ export type BuyOutcome =
           status: "OUT_OF_MONEY";
       }
     | {
+          status: "OUT_OF_SPACE";
+      }
+    | {
           status: "SOLD_OUT";
       }
     | {
@@ -271,6 +274,9 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         situation = await session.getSituation();
         if (situation.status === "OUT_OF_MONEY") {
             return { status: "OUT_OF_MONEY" };
+        }
+        if (situation.status === "OUT_OF_SPACE") {
+            return { status: "OUT_OF_SPACE" };
         }
         if (situation.status === "SOLD_OUT") {
             await normalDelay(1111);

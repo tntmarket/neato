@@ -6,9 +6,11 @@ import { trackUserWasFrozen } from "@src/database/user";
 import { clearListing, updateListing } from "@src/database/listings";
 import { ensureListener } from "@src/util/scriptInjection";
 
+const checkShopPromise = checkUserShopItem();
+
 ensureListener((request: { action: "CHECK_USER_SHOP_ITEM" }) => {
     if (request.action === "CHECK_USER_SHOP_ITEM") {
-        return checkUserShopItem();
+        return checkShopPromise;
     }
 });
 
@@ -18,7 +20,7 @@ async function checkUserShopItem(): Promise<void> {
         .replace("&lower=0", "")
         .replace("&buy_obj_confirm=yes", "");
 
-    const pageText = assume($(".content")).innerText;
+    const pageText = assume($(".content")).innerHTML;
 
     if (pageText.includes("Item not found!")) {
         await callProcedure(clearListing, link);

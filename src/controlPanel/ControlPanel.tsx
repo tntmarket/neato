@@ -48,6 +48,10 @@ export async function buyAllProfitableItems(
             return { ...outcome, boughtAnyItem };
         }
 
+        if (outcome.status === "OUT_OF_SPACE") {
+            return { ...outcome, boughtAnyItem };
+        }
+
         if (outcome.status === "STUCK_IN_LOOP") {
             return { ...outcome, boughtAnyItem };
         }
@@ -80,11 +84,11 @@ async function cycleThroughShopsUntilNoProfitableItems(
                 boughtAnyItem = true;
             }
 
-            if (outcome.status === "OUT_OF_MONEY") {
-                return boughtAnyItem;
-            }
-
-            if (outcome.status === "STUCK_IN_LOOP") {
+            if (
+                ["OUT_OF_MONEY", "OUT_OF_SPACE", "STUCK_IN_LOOP"].includes(
+                    outcome.status,
+                )
+            ) {
                 return boughtAnyItem;
             }
 
@@ -140,14 +144,11 @@ async function restockAndReprice(
 
     if (loggedIntoMainAccount) {
         await withdrawShopTill();
-        await quickStockItems();
-        const boughtAnyItem = await cycleThroughShopsUntilNoProfitableItems(
-            shopIds,
-        );
-        if (boughtAnyItem) {
-            await quickStockItems();
+        await cycleThroughShopsUntilNoProfitableItems(shopIds);
+        const addedAnythingToShop = await quickStockItems();
+        if (addedAnythingToShop) {
+            await undercutMarketPrices();
         }
-        await undercutMarketPrices();
 
         const tooManySearches = await repriceItems();
         if (tooManySearches) {

@@ -32,6 +32,7 @@ export async function upsertListingsSection(
     itemName: string,
     listings: ListingData[],
 ): Promise<void> {
+    bustCache(itemName);
     if (listings.length === 0) {
         return;
     }
@@ -63,6 +64,7 @@ export function updateListing(
 ): Promise<void> {
     return db.transaction("rw", db.listings, async () => {
         const listing = db.listings.where({ link });
+        bustCache((await listing.first())?.itemName);
         await listing.modify({
             link: link.replace(
                 /buy_cost_neopoints=[0-9]+/,
@@ -79,24 +81,42 @@ export function updateListing(
 
 export function clearListing(link: string): Promise<void> {
     return db.transaction("rw", db.listings, async () => {
-        await db.listings.where({ link }).delete();
+        const listing = db.listings.where({ link });
+        bustCache((await listing.first())?.itemName);
+        await listing.delete();
     });
+}
+
+type CachedListings = Map<string, Listing[]>;
+
+const cachedListings: CachedListings = new Map();
+
+function bustCache(itemName: string | undefined) {
+    if (itemName) {
+        cachedListings.delete(itemName);
+    }
 }
 
 export async function getListings(
     itemName: string,
-    limit: number | null = 2,
+    limit = 2,
 ): Promise<Listing[]> {
-    const listings = await db.transaction("r", db.listings, async () =>
-        db.listings.where({ itemName }).sortBy("price"),
-    );
+    let cached = cachedListings.get(itemName);
+    if (!cached || limit > 2) {
+        const listings = await db.transaction("r", db.listings, async () =>
+            db.listings.where({ itemName }).sortBy("price"),
+        );
 
-    const frozenUserNames = await getFrozenUserNames();
-    const unfrozenListings = listings.filter(
-        (listing) => !frozenUserNames.includes(listing.userName),
-    );
+        const frozenUserNames = await getFrozenUserNames();
+        const unfrozenListings = listings.filter(
+            (listing) => !frozenUserNames.includes(listing.userName),
+        );
 
-    return limit !== null ? unfrozenListings.slice(0, limit) : unfrozenListings;
+        cached = unfrozenListings.slice(0, limit);
+        cachedListings.set(itemName, cached);
+    }
+
+    return cached;
 }
 
 export async function getMarketPrice(itemName: string): Promise<number> {

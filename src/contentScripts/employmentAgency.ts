@@ -41,7 +41,7 @@ async function annotateJobPosting(row: HTMLElement) {
         row.style.opacity = "0.15";
     }
 
-    const listings = await callProcedure(getListings, itemName, 8);
+    const listings = await callProcedure(getListings, itemName);
     if (listings.length > 0) {
         const fulfillPlan = getFulfillPlan(quantity, listings);
 

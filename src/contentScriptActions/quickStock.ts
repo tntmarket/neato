@@ -18,7 +18,7 @@ async function getQuickStockTab(): Promise<Tabs.Tab> {
     });
 }
 
-export async function quickStockItems(): Promise<void> {
+export async function quickStockItems(): Promise<boolean> {
     const tab = await getQuickStockTab();
     const tabId = assume(tab.id);
 

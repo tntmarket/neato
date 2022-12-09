@@ -51,7 +51,7 @@ export async function checkPrice(
 // out their original result. We can manually visit their shop to clear
 // it instead
 async function clearAnyInvalidListingsInFront(itemName: string) {
-    const listings = await getListings(itemName, 2);
+    const listings = await getListings(itemName);
     for (const listing of listings) {
         // The next price is fresh, we can exit
         if (hoursAgo(listing.lastSeen) < 1) {
