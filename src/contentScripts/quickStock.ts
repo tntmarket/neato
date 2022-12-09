@@ -2,7 +2,7 @@ import { assume } from "@src/util/typeAssertions";
 import { $All, getInputByValue } from "@src/util/domHelpers";
 import { getListings } from "@src/database/listings";
 import { callProcedure } from "@src/controlPanel/procedure";
-import { ensureListener } from "@src/util/scriptInjection";
+import { ensureListener, waitPageUnload } from "@src/util/scriptInjection";
 import {
     MAX_COPIES_TO_SHELVE,
     MIN_PROFIT,
@@ -50,7 +50,7 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
     // Stock until the max number of copies
     const aboutToBeStocked = quantityAboutToBeStocked.get(itemName) || 0;
 
-    if (currentStock + aboutToBeStocked < MAX_COPIES_TO_SHELVE) {
+    if (aboutToBeStocked < MAX_COPIES_TO_SHELVE) {
         stockButton.click();
         quantityAboutToBeStocked.set(itemName, aboutToBeStocked + 1);
         stockedAnything = true;
@@ -61,11 +61,12 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
     depositedAnything = true;
 });
 
-ensureListener((request: { action: "QUICK_STOCK_ITEMS" }) => {
+ensureListener(async (request: { action: "QUICK_STOCK_ITEMS" }) => {
     if (request.action === "QUICK_STOCK_ITEMS") {
         if (depositedAnything || stockedAnything) {
             const submitButton = assume(getInputByValue("Submit"));
             submitButton.click();
+            await waitPageUnload();
         }
         return stockedAnything;
     }

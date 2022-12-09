@@ -5,7 +5,7 @@ import { sleep } from "@src/util/randomDelay";
 
 async function getQuickStockTab(): Promise<Tabs.Tab> {
     const tabs = await browser.tabs.query({
-        url: "https://www.neopets.com/quickstock.phtml*",
+        url: "https://www.neopets.com/*quickstock.phtml*",
     });
     const tab = tabs[0];
     if (tab) {

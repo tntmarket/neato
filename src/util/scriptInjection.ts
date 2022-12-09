@@ -28,3 +28,7 @@ export function onPageUnload(onUnload: () => void) {
         onUnload();
     });
 }
+
+export function waitPageUnload() {
+    return new Promise<void>(onPageUnload);
+}

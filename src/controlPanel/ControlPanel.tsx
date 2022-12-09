@@ -6,12 +6,12 @@ import { checkPrice } from "@src/autoRestock/priceChecking";
 import { getProcedure } from "@src/controlPanel/procedure";
 import { NpcShopInput } from "@src/controlPanel/NpcShopInput";
 import { buyBestItemIfAny, BuyOutcome } from "@src/autoRestock/buyingItems";
-import { normalDelay, sleep } from "@src/util/randomDelay";
+import { normalDelay } from "@src/util/randomDelay";
 import { getJsonSetting } from "@src/util/localStorage";
 import { getNextItemsToReprice } from "@src/priceMonitoring";
 import { getListings } from "@src/database/listings";
 import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
-import { useAccounts, waitTillNextHour } from "@src/accounts";
+import { useAccounts } from "@src/accounts";
 import browser from "webextension-polyfill";
 import { quickStockItems } from "@src/contentScriptActions/quickStock";
 import { ListingBrowser } from "@src/controlPanel/ListingBrowser";
@@ -101,8 +101,10 @@ async function cycleThroughShopsUntilNoProfitableItems(
     return boughtAnyItem;
 }
 
-async function repriceStalestItems(): Promise<{ tooManySearches?: true }> {
-    const itemsToReprice = await getNextItemsToReprice(40);
+async function repriceStalestItems(
+    numItemsToReprice: number,
+): Promise<{ tooManySearches?: true }> {
+    const itemsToReprice = await getNextItemsToReprice(numItemsToReprice);
     if (itemsToReprice.length === 0) {
         return {};
     }
@@ -131,38 +133,44 @@ async function restockAndReprice(
     switchToUnbannedAccount: () => Promise<boolean>,
     recordBanTime: () => void,
 ) {
-    async function repriceItems() {
+    async function repriceItems(numItemsToReprice: number) {
         if (currentAccountCanSearch) {
-            const { tooManySearches } = await repriceStalestItems();
+            const { tooManySearches } = await repriceStalestItems(
+                numItemsToReprice,
+            );
             if (tooManySearches) {
                 recordBanTime();
             }
-            return tooManySearches;
+            return { tooManySearches, anySearchWasDone: true };
         }
-        return true;
+        return { tooManySearches: true, anySearchWasDone: false };
     }
 
     if (loggedIntoMainAccount) {
         await withdrawShopTill();
         await cycleThroughShopsUntilNoProfitableItems(shopIds);
-        const addedAnythingToShop = await quickStockItems();
-        if (addedAnythingToShop) {
+        await quickStockItems();
+
+        const { tooManySearches, anySearchWasDone } = await repriceItems(10);
+        if (anySearchWasDone) {
             await undercutMarketPrices();
         }
-
-        const tooManySearches = await repriceItems();
         if (tooManySearches) {
             const unbannedAccount = await switchToUnbannedAccount();
             if (!unbannedAccount) {
                 // If we have no accounts available, just wait instead of
                 // immediately starting another restocking run
                 await normalDelay(TIME_BETWEEN_RESTOCK_CYCLES);
+                return;
             }
         }
     } else {
-        await repriceItems();
+        const { anySearchWasDone } = await repriceItems(60);
         // Return to main to interleave a restocking run before the next shop wizard run
         await switchAccount(0);
+        if (anySearchWasDone) {
+            await undercutMarketPrices();
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 import { $, $All } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import { getDarkestPixel } from "@src/captcha";
-import { ensureListener, onPageUnload } from "@src/util/scriptInjection";
+import {ensureListener, onPageUnload, waitPageUnload} from "@src/util/scriptInjection";
 
 export type HaggleDetails = {
     itemName: string;
@@ -95,7 +95,7 @@ async function makeHaggleOffer(offer: number) {
 
     // Wait until page reloads before returning,
     // so we don't haggle twice on the same page
-    await new Promise<void>(onPageUnload);
+    await waitPageUnload();
 }
 
 function extractNumber(element: HTMLElement): number {

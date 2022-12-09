@@ -45,7 +45,7 @@ async function setPage(tabId: number, page = 1) {
 }
 
 const MIN_PAGE = 1;
-const MAX_PAGE = 40;
+const MAX_PAGE = 100;
 
 async function setShopStockPrices(
     tabId: number,
@@ -120,7 +120,7 @@ async function getUnderCutPrice(
 
     if (daysAgo(listings[0].lastSeen) > DAYS_BEFORE_REPRICING_SHOP_STOCK) {
         console.log(
-            `Price is older than ${DAYS_BEFORE_REPRICING_SHOP_STOCK}, recheck before setting the price`,
+            `${itemName} is older than ${DAYS_BEFORE_REPRICING_SHOP_STOCK}, recheck before setting the price`,
         );
         return price;
     }

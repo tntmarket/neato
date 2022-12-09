@@ -21,6 +21,8 @@ import {
     MIN_PROFIT_RATIO,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
     MIN_PROFIT_TO_QUICK_BUY,
+    TIME_TO_CHOOSE_ITEM,
+    TIME_TO_MAKE_HAGGLE_OFFER,
 } from "@src/autoRestock/autoRestockConfig";
 import { getJellyNeoEntry } from "@src/database/jellyNeo";
 import { recordPurchase } from "@src/database/purchaseLog";
@@ -260,8 +262,7 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         return { status: "NOTHING_TO_BUY" };
     }
 
-    // Time to choose an item to buy and click it
-    await normalDelay(1111);
+    await normalDelay(TIME_TO_CHOOSE_ITEM);
     const session = await HaggleSession.start(tabId, buyOpportunity.itemName);
 
     let nextOffer = 0;
@@ -303,8 +304,7 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
             // Failsafe in case we get stuck, and the price isn't budging
             nextOffer = situation.currentAsk;
         }
-        // Time to type in offer and click captcha
-        await normalDelay(888);
+        await normalDelay(TIME_TO_MAKE_HAGGLE_OFFER);
         await session.makeOffer(nextOffer);
     }
 

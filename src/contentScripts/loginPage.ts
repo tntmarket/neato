@@ -1,6 +1,6 @@
 import { assume } from "@src/util/typeAssertions";
 import { $ } from "@src/util/domHelpers";
-import { ensureListener, onPageUnload } from "@src/util/scriptInjection";
+import { ensureListener, waitPageUnload } from "@src/util/scriptInjection";
 
 type LoginRequest = {
     action: "LOGIN_ACCOUNT";
@@ -19,5 +19,5 @@ async function loginUser({ username, password }: LoginRequest) {
     assume($<HTMLInputElement>("#loginPassword")).value = password;
     assume($("#loginButton")).click();
     // Wait until login completes before returning
-    await new Promise<void>(onPageUnload);
+    await waitPageUnload();
 }

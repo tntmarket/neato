@@ -95,7 +95,7 @@ export async function getNextItemsToReprice(limit: number): Promise<string[]> {
                     daysAgo(listings[0].lastSeen) -
                     // Expedite items that are currently stocked, so we can potentially
                     // identify profitable buys before the shop full-clears
-                    (npcStockItemNames.has(itemName) ? 5 : 0),
+                    (npcStockItemNames.has(itemName) ? 2 : 0),
             });
         }),
     );
