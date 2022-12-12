@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getAllStockedItems } from "@src/database/myShopStock";
+import { getCachedRarity } from "@src/database/jellyNeo";
 
 export function MyShopStockBrowser() {
-    const [itemName, setItemName] = useState("");
+    const [itemName, setItemName] = useState("?");
     const stockedItems = useLiveQuery(() => getAllStockedItems(), [], []);
 
     const totalQuantity = stockedItems
@@ -34,12 +35,14 @@ export function MyShopStockBrowser() {
                     <thead>
                         <tr>
                             <th>Item ({stockedItems.length})</th>
+                            <th>Rarity</th>
                             <th>Quantity ({totalQuantity})</th>
                             <th>Price ({totalValue})</th>
                         </tr>
                     </thead>
                     <tbody>
                         {stockedItems
+                            .sort((a, b) => a.price - b.price)
                             .filter(
                                 (item) =>
                                     itemName === "" ||
@@ -48,6 +51,7 @@ export function MyShopStockBrowser() {
                             .map((listing) => (
                                 <tr key={listing.itemName}>
                                     <th>{listing.itemName}</th>
+                                    <td>{getCachedRarity(listing.itemName)}</td>
                                     <td>{listing.quantity}</td>
                                     <td>{listing.price}</td>
                                 </tr>

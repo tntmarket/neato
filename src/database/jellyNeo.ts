@@ -12,10 +12,10 @@ export type JellyNeoEntry = JellyNeoEntryData & {
 
 type JellyNeoEntryMap = Map<string, JellyNeoEntry>;
 
-let jellyNeoEntriesPromise: Promise<JellyNeoEntryMap> | null = null;
+const cachedEntries: JellyNeoEntryMap = new Map();
+let jellyNeoEntriesPromise: Promise<JellyNeoEntryMap> | null = rebuildCache();
 
 async function rebuildCache() {
-    const cachedEntries: JellyNeoEntryMap = new Map();
     console.log("Re-building JellyNeo cache");
     await db.transaction("r", db.jellyNeo, () =>
         db.jellyNeo.each((entry) => {
@@ -42,6 +42,11 @@ export async function getJellyNeoEntry(
     itemName: string,
 ): Promise<JellyNeoEntry | undefined> {
     return (await getJellyNeoEntries()).get(itemName);
+}
+
+// Gracefully gives 0 if cache isn't built yet, used for reporting
+export function getCachedRarity(itemName: string): number {
+    return cachedEntries.get(itemName)?.rarity || 0;
 }
 
 export async function getJellyNeoEntries(): Promise<JellyNeoEntryMap> {

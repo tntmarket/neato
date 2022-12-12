@@ -8,9 +8,12 @@ import { sleep } from "@src/util/randomDelay";
 import { MIN_PROFIT } from "@src/autoRestock/autoRestockConfig";
 import { getCurrentShopStock } from "@src/database/myShopStock";
 
+export type PriceCheckOutcome = { tooManySearches?: true; onFairyQuest?: true };
+
 export async function checkPrice(
     itemName: string,
-): Promise<{ tooManySearches?: true }> {
+    abortIfCheaperThan = MIN_PROFIT,
+): Promise<PriceCheckOutcome> {
     const numberOwned = await getCurrentShopStock(itemName);
     const { sections, tooManySearches, onFairyQuest } = await searchShopWizard(
         numberOwned > 0
@@ -27,12 +30,16 @@ export async function checkPrice(
                   maxRequests: 7,
                   // If we're just checking to prepare for restocking,
                   // abort as soon as we know it's cheap enough to ignore
-                  abortIfCheaperThan: MIN_PROFIT,
+                  abortIfCheaperThan,
               },
     );
 
-    if (tooManySearches || onFairyQuest) {
+    if (tooManySearches) {
         return { tooManySearches: true };
+    }
+
+    if (onFairyQuest) {
+        return { onFairyQuest: true };
     }
 
     for (const listings of sections) {

@@ -1,4 +1,4 @@
-import { getJsonSetting, getSetting } from "@src/util/localStorage";
+import { getJsonSetting } from "@src/util/localStorage";
 import { assume } from "@src/util/typeAssertions";
 import browser, { Tabs } from "webextension-polyfill";
 import { waitForTabStatus } from "@src/util/tabControl";
@@ -18,6 +18,12 @@ const loginInfoSetting = getJsonSetting<LoginInfo[]>("credentials", [
 ]);
 
 const banTimesSetting = getJsonSetting<BanTimes>("banTimes", {});
+
+export type FairyQuests = {
+    [accountId: number]: boolean;
+};
+
+const fairyQuestsSetting = getJsonSetting<FairyQuests>("fairyQuests", {});
 
 async function getLogoutTab(): Promise<Tabs.Tab> {
     const tabs = await browser.tabs.query({
@@ -43,6 +49,7 @@ type UseAccounts = {
     switchAccount: (accountId: number) => Promise<void>;
     switchToUnbannedAccount: () => Promise<boolean>;
     recordBanTime: () => void;
+    recordFairyQuest: () => void;
     accountsUI: React.ReactNode;
 };
 
@@ -56,6 +63,9 @@ export function useAccounts(): UseAccounts {
     );
     const [credentials, setCredentials] = useState(loginInfoSetting.get());
     const [banTimes, setBanTimes] = useState<BanTimes>(banTimesSetting.get());
+    const [fairyQuests, setFairyQuests] = useState<FairyQuests>(
+        fairyQuestsSetting.get(),
+    );
 
     async function switchAccount(accountId: number) {
         const account = credentials[accountId];
@@ -76,6 +86,15 @@ export function useAccounts(): UseAccounts {
         });
         await sleep(100);
         await waitForTabStatus(tabId, "complete");
+    }
+
+    function recordFairyQuest(): FairyQuests {
+        const justBannedAccount = credentials[loggedInAccountId];
+        console.log(`${justBannedAccount.username} encountered fairy quest`);
+        const nextFairyQuests = { ...fairyQuests, [loggedInAccountId]: true };
+        setFairyQuests(nextFairyQuests);
+        fairyQuestsSetting.set(nextFairyQuests);
+        return nextFairyQuests;
     }
 
     function recordBanTime(): BanTimes {
@@ -104,7 +123,7 @@ export function useAccounts(): UseAccounts {
             accountId += 1
         ) {
             if (
-                isNotBanned(banTimes, accountId) &&
+                isNotBanned(banTimes, fairyQuests, accountId) &&
                 // assume the current account is already banned,
                 // but just not reflected in state yet
                 accountId !== loggedInAccountId
@@ -118,13 +137,19 @@ export function useAccounts(): UseAccounts {
 
     return {
         loggedIntoMainAccount: loggedInAccountId === 0,
-        currentAccountCanSearch: isNotBanned(banTimes, loggedInAccountId),
+        currentAccountCanSearch: isNotBanned(
+            banTimes,
+            fairyQuests,
+            loggedInAccountId,
+        ),
         recordBanTime,
+        recordFairyQuest,
         switchAccount,
         switchToUnbannedAccount,
         accountsUI: (
             <CredentialsInput
                 banTimes={banTimes}
+                fairyQuests={fairyQuests}
                 credentials={credentials}
                 onChange={async (credentials: LoginInfo[]) => {
                     setCredentials(credentials);
@@ -144,7 +169,14 @@ export async function waitTillNextHour(delay = 10000) {
     return sleep(millisToNextHour + randomPercentRange(delay, 0.8));
 }
 
-export function isNotBanned(banTimes: BanTimes, accountId: number): boolean {
+export function isNotBanned(
+    banTimes: BanTimes,
+    fairyQuests: FairyQuests,
+    accountId: number,
+): boolean {
+    if (fairyQuests[accountId]) {
+        return false;
+    }
     const banTime = banTimes[accountId] || 0;
     const bannedMoreThanHourAgo = Date.now() - banTime > 1000 * 60 * 60;
     const bannedInDifferentHour =

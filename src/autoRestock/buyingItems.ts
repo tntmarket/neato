@@ -24,7 +24,7 @@ import {
     TIME_TO_CHOOSE_ITEM,
     TIME_TO_MAKE_HAGGLE_OFFER,
 } from "@src/autoRestock/autoRestockConfig";
-import { getJellyNeoEntry } from "@src/database/jellyNeo";
+import { getJellyNeoEntry, JellyNeoEntry } from "@src/database/jellyNeo";
 import { recordPurchase } from "@src/database/purchaseLog";
 
 type BuyOpportunity = {
@@ -63,6 +63,26 @@ function undercutNTimes(price: number, timesToUndercut: number) {
     return underCutPrice;
 }
 
+function estimatePrice(jellyNeoEntry: JellyNeoEntry | undefined) {
+    if (!jellyNeoEntry) {
+        return ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW;
+    }
+    if (jellyNeoEntry.price) {
+        return jellyNeoEntry.price;
+    }
+
+    if (jellyNeoEntry.rarity >= 99) {
+        return 500_000;
+    }
+    if (jellyNeoEntry.rarity >= 90) {
+        return 100_000;
+    }
+    if (jellyNeoEntry.rarity >= 80) {
+        return 50_000;
+    }
+    return 10_000;
+}
+
 export async function calculateBuyOpportunity({
     itemName,
     price,
@@ -73,17 +93,12 @@ export async function calculateBuyOpportunity({
 
     // Fall back to jelly neo if we don't know the price
     const jellyNeoEntry = await getJellyNeoEntry(itemName);
-    // Pretend item is worth 10000 if jelly neo doesn't know the price
-    const jellyNeoPrice =
-        jellyNeoEntry?.price || ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW;
+    const jellyNeoPrice = estimatePrice(jellyNeoEntry);
 
     // Fall back to jelly neo if we don't know the price
     const marketPrice = listing ? listing.price : jellyNeoPrice;
 
     const hagglePrice = price * 0.75;
-
-    const profit = marketPrice - price;
-    const profitRatio = profit / price;
 
     const alreadyStocked = await getCurrentShopStock(itemName);
     // Penalize buying lots of the same item, cause the price will
@@ -92,17 +107,20 @@ export async function calculateBuyOpportunity({
     const futureHaggleProfit = futureMarketPrice - hagglePrice;
     const futureHaggleProfitRatio = futureHaggleProfit / hagglePrice;
 
+    const profit = futureMarketPrice - price;
+    const profitRatio = profit / price;
+
     return {
         itemName,
         daysToImpactfulPriceChange:
-            estimateDaysToImpactfulPriceChange(listings),
+            Math.round(estimateDaysToImpactfulPriceChange(listings) * 10) / 10,
         quantity,
+        alreadyStocked,
         marketPrice,
         profit,
         profitRatio,
-        hagglePrice,
-        alreadyStocked,
-        futureHaggleProfit,
+        hagglePrice: Math.round(hagglePrice),
+        futureHaggleProfit: Math.round(futureHaggleProfit),
         futureHaggleProfitRatio,
         fellBackToJellyNeo: !listing,
         jellyNeoPrice,
@@ -156,16 +174,49 @@ function isWorth({
 async function bestItemToHaggleFor(
     tabId: number,
     shopId: number,
-): Promise<BuyOpportunity | undefined> {
+): Promise<BuyOpportunity | boolean> {
     const buyOpportunities = await estimateProfitability(tabId, shopId);
-    return ljs(
-        buyOpportunities
-            .filter(isWorth)
-            .sort(
-                (buyA, buyB) =>
-                    buyB.futureHaggleProfit - buyA.futureHaggleProfit,
-            ),
-    )[0];
+    if (buyOpportunities.length === 0) {
+        // Shop has no items
+        return false;
+    }
+    const worthyOpportunities = buyOpportunities
+        .filter(isWorth)
+        .sort(
+            (buyA, buyB) => buyB.futureHaggleProfit - buyA.futureHaggleProfit,
+        );
+    if (worthyOpportunities.length === 0) {
+        // Shop has items, but none are worth buying
+        return true;
+    }
+    worthyOpportunities.forEach(
+        ({
+            itemName,
+            daysToImpactfulPriceChange,
+            quantity,
+            marketPrice,
+            hagglePrice,
+            alreadyStocked,
+            futureHaggleProfit,
+            futureHaggleProfitRatio,
+            jellyNeoPrice,
+        }) => {
+            const alreadyStockedLabel = alreadyStocked
+                ? ` | ${alreadyStocked}`
+                : "";
+            console.log(
+                [
+                    `${itemName} (${quantity}${alreadyStockedLabel})`,
+                    `   +${futureHaggleProfit} / ${Math.round(
+                        futureHaggleProfitRatio * 100,
+                    )}%`,
+                    `   ${hagglePrice} => ${marketPrice}  /  ${jellyNeoPrice}`,
+                    `   ${daysToImpactfulPriceChange} days`,
+                ].join("\n"),
+            );
+        },
+    );
+    return worthyOpportunities[0];
 }
 
 function makeHumanTypable(amount: number) {
@@ -219,7 +270,10 @@ export async function getNextOffer({
 
 export type BuyOutcome =
     | {
-          status: "NOTHING_TO_BUY";
+          status: "NOTHING_WORTH_BUYING";
+      }
+    | {
+          status: "NPC_SHOP_IS_EMPTY";
       }
     | {
           status: "OUT_OF_MONEY";
@@ -258,8 +312,12 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
 
     const buyOpportunity = await bestItemToHaggleFor(tabId, shopId);
 
-    if (!buyOpportunity) {
-        return { status: "NOTHING_TO_BUY" };
+    if (buyOpportunity === true) {
+        return { status: "NOTHING_WORTH_BUYING" };
+    }
+
+    if (buyOpportunity === false) {
+        return { status: "NPC_SHOP_IS_EMPTY" };
     }
 
     await normalDelay(TIME_TO_CHOOSE_ITEM);

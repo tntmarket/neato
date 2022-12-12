@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import css from "./styles.module.css";
 import { OnOffToggle } from "@src/controlPanel/OnOffToggle";
 import { SearchWizardInput } from "@src/controlPanel/SearchWizardInput";
-import { checkPrice } from "@src/autoRestock/priceChecking";
+import { checkPrice, PriceCheckOutcome } from "@src/autoRestock/priceChecking";
 import { getProcedure } from "@src/controlPanel/procedure";
 import { NpcShopInput } from "@src/controlPanel/NpcShopInput";
 import { buyBestItemIfAny, BuyOutcome } from "@src/autoRestock/buyingItems";
@@ -21,6 +21,7 @@ import { PurchaseLog } from "@src/controlPanel/PurchaseLog";
 import {
     MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP,
     TIME_BETWEEN_REFRESHES,
+    TIME_BETWEEN_RESTOCK_BANS,
     TIME_BETWEEN_RESTOCK_CYCLES,
 } from "@src/autoRestock/autoRestockConfig";
 
@@ -28,19 +29,29 @@ let latestAutomationSessionId = 0;
 
 class AutomationSettingChanged extends Error {}
 
+const MAX_REFRESHES_IN_ONE_SHOP = 20;
+
 export async function buyAllProfitableItems(
     shopId: number,
     automationSessionId: number,
 ): Promise<BuyOutcome & { boughtAnyItem: boolean }> {
     let boughtAnyItem = false;
-    while (true) {
+    for (
+        let refreshCount = 0;
+        refreshCount < MAX_REFRESHES_IN_ONE_SHOP;
+        refreshCount += 1
+    ) {
         const outcome = await buyBestItemIfAny(shopId);
         console.log(outcome);
 
         if (automationSessionId !== latestAutomationSessionId) {
             throw new AutomationSettingChanged();
         }
-        if (outcome.status === "NOTHING_TO_BUY") {
+        if (outcome.status === "NOTHING_WORTH_BUYING") {
+            return { ...outcome, boughtAnyItem };
+        }
+
+        if (outcome.status === "NPC_SHOP_IS_EMPTY") {
             return { ...outcome, boughtAnyItem };
         }
 
@@ -60,19 +71,21 @@ export async function buyAllProfitableItems(
             boughtAnyItem = true;
         }
     }
+    throw new Error(
+        "Refreshing too many times in one shop, something must be wrong",
+    );
 }
 
 async function cycleThroughShopsUntilNoProfitableItems(
     shopIds: number[],
-): Promise<boolean> {
+): Promise<{ sawAnyItem: boolean; boughtAnyItem: boolean }> {
     latestAutomationSessionId += 1;
     let boughtAnyItem = false;
+    let sawAnyItem = false;
     const automationSessionId = latestAutomationSessionId;
-    for (
-        let numTimeWithoutBuy = 0;
-        numTimeWithoutBuy < MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP;
-        numTimeWithoutBuy += 1
-    ) {
+    let numConsecutiveDroughts = 0;
+    while (numConsecutiveDroughts < MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP) {
+        let boughtAnyItemInCycle = false;
         for (const shopId of shopIds) {
             const outcome = await buyAllProfitableItems(
                 shopId,
@@ -80,8 +93,12 @@ async function cycleThroughShopsUntilNoProfitableItems(
             );
 
             if (outcome.boughtAnyItem) {
-                numTimeWithoutBuy = 0;
+                boughtAnyItemInCycle = true;
                 boughtAnyItem = true;
+            }
+
+            if (outcome.status !== "NPC_SHOP_IS_EMPTY") {
+                sawAnyItem = true;
             }
 
             if (
@@ -89,21 +106,35 @@ async function cycleThroughShopsUntilNoProfitableItems(
                     outcome.status,
                 )
             ) {
-                return boughtAnyItem;
+                return { boughtAnyItem, sawAnyItem };
             }
 
-            if (outcome.status === "NOTHING_TO_BUY") {
+            if (
+                ["NOTHING_WORTH_BUYING", "NPC_SHOP_IS_EMPTY"].includes(
+                    outcome.status,
+                )
+            ) {
                 // Wait before cycling to the next shop
                 await normalDelay(TIME_BETWEEN_REFRESHES);
             }
         }
+        if (boughtAnyItemInCycle) {
+            numConsecutiveDroughts = 0;
+        } else {
+            numConsecutiveDroughts += 1;
+        }
     }
-    return boughtAnyItem;
+    const restockBanned = !sawAnyItem;
+    if (restockBanned) {
+        // Wait longer if we are restock banned
+        await normalDelay(TIME_BETWEEN_RESTOCK_BANS);
+    }
+    return { boughtAnyItem, sawAnyItem };
 }
 
 async function repriceStalestItems(
     numItemsToReprice: number,
-): Promise<{ tooManySearches?: true }> {
+): Promise<PriceCheckOutcome> {
     const itemsToReprice = await getNextItemsToReprice(numItemsToReprice);
     if (itemsToReprice.length === 0) {
         return {};
@@ -111,9 +142,12 @@ async function repriceStalestItems(
 
     for (const item of itemsToReprice) {
         const priceBefore = await getListings(item);
-        const { tooManySearches } = await checkPrice(item);
-        if (tooManySearches) {
-            return { tooManySearches };
+        const priceCheckOutcome = await checkPrice(item);
+        if (
+            priceCheckOutcome.tooManySearches ||
+            priceCheckOutcome.onFairyQuest
+        ) {
+            return priceCheckOutcome;
         }
 
         const priceAfter = await getListings(item);
@@ -132,14 +166,20 @@ async function restockAndReprice(
     switchAccount: (accountId: number) => Promise<void>,
     switchToUnbannedAccount: () => Promise<boolean>,
     recordBanTime: () => void,
+    recordFairyQuest: () => void,
 ) {
+    console.clear();
+
     async function repriceItems(numItemsToReprice: number) {
         if (currentAccountCanSearch) {
-            const { tooManySearches } = await repriceStalestItems(
+            const { tooManySearches, onFairyQuest } = await repriceStalestItems(
                 numItemsToReprice,
             );
             if (tooManySearches) {
                 recordBanTime();
+            }
+            if (onFairyQuest) {
+                recordFairyQuest();
             }
             return { tooManySearches, anySearchWasDone: true };
         }
@@ -191,6 +231,7 @@ export function ControlPanel() {
         switchToUnbannedAccount,
         accountsUI,
         recordBanTime,
+        recordFairyQuest,
     } = useAccounts();
 
     useEffect(() => {
@@ -220,6 +261,7 @@ export function ControlPanel() {
                 switchAccount,
                 switchToUnbannedAccount,
                 recordBanTime,
+                recordFairyQuest,
             )
                 .then(() => {
                     setConsecutiveFailures(0);
@@ -260,7 +302,7 @@ export function ControlPanel() {
             />
             <SearchWizardInput
                 onSearch={async (itemName: string) => {
-                    await checkPrice(itemName);
+                    await checkPrice(itemName, 100);
                 }}
             />
             <NpcShopInput

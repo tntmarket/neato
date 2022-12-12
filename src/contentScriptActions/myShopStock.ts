@@ -108,20 +108,14 @@ async function getUnderCutPrice(
     }
 
     if (listings[0].userName === "0_NOT_A_REAL_USER!") {
-        const jellyNeoEntry = await getJellyNeoEntry(itemName);
-        const jellyNeoPrice = jellyNeoEntry?.price || 1_100_000_000;
-        if (jellyNeoPrice > 1_100_000_000) {
-            console.log(
-                `${itemName} is possibly unbuyable, don't put on shelf`,
-            );
-            return price;
-        }
+        console.log(`${itemName} is possibly unbuyable, don't put on shelf`);
+        return price;
     }
 
     if (daysAgo(listings[0].lastSeen) > DAYS_BEFORE_REPRICING_SHOP_STOCK) {
-        console.log(
-            `${itemName} is older than ${DAYS_BEFORE_REPRICING_SHOP_STOCK}, recheck before setting the price`,
-        );
+        // console.log(
+        //     `${itemName} is older than ${DAYS_BEFORE_REPRICING_SHOP_STOCK}, recheck before setting the price`,
+        // );
         return price;
     }
 

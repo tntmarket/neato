@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { BanTimes, isNotBanned, LoginInfo } from "@src/accounts";
+import { BanTimes, FairyQuests, isNotBanned, LoginInfo } from "@src/accounts";
 
 type Props = {
     banTimes: BanTimes;
+    fairyQuests: FairyQuests;
     credentials: LoginInfo[];
     onChange: (credentials: LoginInfo[]) => void;
     loggedInAccountId: number;
@@ -11,6 +12,7 @@ type Props = {
 
 export function CredentialsInput({
     banTimes,
+    fairyQuests,
     credentials,
     onChange,
     loggedInAccountId,
@@ -53,7 +55,9 @@ export function CredentialsInput({
                         type="radio"
                         name="radio-2"
                         className={`radio ${
-                            isNotBanned(banTimes, accountId)
+                            fairyQuests[accountId]
+                                ? "radio-warning"
+                                : isNotBanned(banTimes, fairyQuests, accountId)
                                 ? "radio-primary"
                                 : ""
                         }`}
