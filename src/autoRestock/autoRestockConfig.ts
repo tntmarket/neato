@@ -16,7 +16,7 @@ export const TIME_BETWEEN_RESTOCK_BANS = 188_888;
 // Wait ~1 minutes between restock runs
 export const TIME_BETWEEN_RESTOCK_CYCLES = 66_666;
 
-export const DAYS_BEFORE_REPRICING_SHOP_STOCK = 1;
+export const DAYS_BEFORE_REPRICING_SHOP_STOCK = 2;
 
 export const TIME_TO_CHOOSE_ITEM = 1111;
 export const TIME_TO_MAKE_HAGGLE_OFFER = 888;

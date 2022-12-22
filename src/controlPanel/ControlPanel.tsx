@@ -11,7 +11,7 @@ import { getJsonSetting } from "@src/util/localStorage";
 import { getNextItemsToReprice } from "@src/priceMonitoring";
 import { getListings } from "@src/database/listings";
 import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
-import { useAccounts } from "@src/accounts";
+import { useAccounts, waitTillNextHour } from "@src/accounts";
 import browser from "webextension-polyfill";
 import { quickStockItems } from "@src/contentScriptActions/quickStock";
 import { ListingBrowser } from "@src/controlPanel/ListingBrowser";
@@ -186,30 +186,46 @@ async function restockAndReprice(
         return { tooManySearches: true, anySearchWasDone: false };
     }
 
+    const autoBuy = Boolean(shopIds.length > 0);
     if (loggedIntoMainAccount) {
-        await withdrawShopTill();
-        await cycleThroughShopsUntilNoProfitableItems(shopIds);
-        await quickStockItems();
+        if (autoBuy) {
+            await withdrawShopTill();
+            await cycleThroughShopsUntilNoProfitableItems(shopIds);
+            await quickStockItems();
+        }
 
-        const { tooManySearches, anySearchWasDone } = await repriceItems(10);
+        const { tooManySearches, anySearchWasDone } = await repriceItems(20);
         if (anySearchWasDone) {
             await undercutMarketPrices();
         }
         if (tooManySearches) {
             const unbannedAccount = await switchToUnbannedAccount();
             if (!unbannedAccount) {
-                // If we have no accounts available, just wait instead of
-                // immediately starting another restocking run
-                await normalDelay(TIME_BETWEEN_RESTOCK_CYCLES);
+                if (autoBuy) {
+                    // If we have no accounts available, just wait instead of
+                    // immediately starting another restocking run
+                    await normalDelay(TIME_BETWEEN_RESTOCK_CYCLES);
+                } else {
+                    // If we're not auto buying, wait until shop wizard ban is up
+                    await waitTillNextHour();
+                }
                 return;
             }
         }
     } else {
         const { anySearchWasDone } = await repriceItems(60);
-        // Return to main to interleave a restocking run before the next shop wizard run
-        await switchAccount(0);
-        if (anySearchWasDone) {
-            await undercutMarketPrices();
+        if (autoBuy) {
+            // Return to main to interleave a restocking run before the next shop wizard run
+            await switchAccount(0);
+            if (anySearchWasDone) {
+                await undercutMarketPrices();
+            }
+        } else {
+            // Cycle to next account if we're in pure shop wizard mode
+            const unbannedAccount = await switchToUnbannedAccount();
+            if (!unbannedAccount) {
+                await waitTillNextHour();
+            }
         }
     }
 }

@@ -5,7 +5,7 @@ import { sleep } from "@src/util/randomDelay";
 
 async function getShopTillTab(): Promise<Tabs.Tab> {
     const tabs = await browser.tabs.query({
-        url: "https://www.neopets.com/market.phtml?type=till*",
+        url: "https://www.neopets.com/*market.phtml*till*",
     });
     const tab = tabs[0];
     if (tab) {

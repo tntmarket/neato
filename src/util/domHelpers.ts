@@ -1,5 +1,5 @@
 import { sleep } from "@src/util/randomDelay";
-import { setInterval } from "worker-timers";
+import { setInterval, clearInterval } from "worker-timers";
 
 export function $All<E extends HTMLElement = HTMLElement>(selector: string) {
     return Array.from(document.querySelectorAll<E>(selector));
@@ -40,9 +40,10 @@ export function getInputByValue(value: string): HTMLInputElement | null {
 
 export function waitForElementToExist(selector: string): Promise<HTMLElement> {
     return new Promise((resolve) => {
-        setInterval(() => {
+        const elementPoller = setInterval(() => {
             const element = $(selector);
             if (element) {
+                clearInterval(elementPoller);
                 resolve(element);
             }
         }, 100);
