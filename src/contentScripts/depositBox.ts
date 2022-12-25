@@ -3,7 +3,7 @@ import { callProcedure } from "@src/controlPanel/procedure";
 import { getMarketPrice } from "@src/database/listings";
 import {
     MAX_COPIES_TO_SHELVE,
-    MIN_PROFIT,
+    MIN_VALUE_TO_SHELVE,
 } from "@src/autoRestock/autoRestockConfig";
 import { getCurrentShopStock } from "@src/database/myShopStock";
 import { assume } from "@src/util/typeAssertions";
@@ -52,17 +52,17 @@ async function annotateWarehouseRows() {
         }
 
         if (HIDDEN_ITEMS.includes(itemName)) {
-            row.style.display = "none";
+            // row.style.display = "none";
             continue;
         }
 
-        if (price < MIN_PROFIT) {
+        if (price < MIN_VALUE_TO_SHELVE) {
             row.style.opacity = "0.2";
-            row.style.display = "none";
+            // row.style.display = "none";
             continue;
         }
 
-        if (price >= MIN_PROFIT) {
+        if (price >= MIN_VALUE_TO_SHELVE) {
             const currentStock = await callProcedure(
                 getCurrentShopStock,
                 itemName,
@@ -75,11 +75,10 @@ async function annotateWarehouseRows() {
                     quantity,
                 )}`;
                 removeInput.dataset.remove_val = "y";
-                continue;
             }
         }
 
-        row.style.display = "none";
+        // row.style.display = "none";
     }
 }
 

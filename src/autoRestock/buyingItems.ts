@@ -17,7 +17,7 @@ import {
     ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW,
     MAX_COPIES_TO_SHELVE,
     MAX_COPIES_TO_SHELVE_IF_VALUABLE,
-    MIN_PROFIT,
+    MIN_PROFIT_TO_BUY,
     MIN_PROFIT_RATIO,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
     MIN_PROFIT_TO_QUICK_BUY,
@@ -143,7 +143,7 @@ function isWorth({
     fellBackToJellyNeo,
 }: BuyOpportunity) {
     const isMinimallyProfitable =
-        futureHaggleProfit > MIN_PROFIT &&
+        futureHaggleProfit > MIN_PROFIT_TO_BUY &&
         futureHaggleProfitRatio > MIN_PROFIT_RATIO;
     if (!isMinimallyProfitable) {
         return false;

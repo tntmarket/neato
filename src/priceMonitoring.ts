@@ -6,7 +6,7 @@ import { getJellyNeoEntries } from "@src/database/jellyNeo";
 import { getAllStockedItems } from "@src/database/myShopStock";
 import {
     DAYS_BEFORE_REPRICING_SHOP_STOCK,
-    MIN_PROFIT,
+    MIN_PROFIT_TO_BUY,
     MIN_PROFIT_TO_QUICK_BUY,
 } from "@src/autoRestock/autoRestockConfig";
 
@@ -222,7 +222,7 @@ function proximityToBuyThreshold(marketPrice: number) {
     const typicalNpcPrice = 1000;
     const typicalProfit = Math.max(0, marketPrice - typicalNpcPrice);
     const percentageFromThreshold =
-        Math.abs(typicalProfit - MIN_PROFIT) / MIN_PROFIT;
+        Math.abs(typicalProfit - MIN_PROFIT_TO_BUY) / MIN_PROFIT_TO_BUY;
 
     if (percentageFromThreshold > 1) {
         return 0;

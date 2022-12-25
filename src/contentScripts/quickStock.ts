@@ -4,8 +4,11 @@ import { getListings } from "@src/database/listings";
 import { callProcedure } from "@src/controlPanel/procedure";
 import { ensureListener, waitPageUnload } from "@src/util/scriptInjection";
 import {
+    EASY_TO_SELL_REGEX,
+    ITEMS_TO_ALWAYS_DEPOSIT,
     MAX_COPIES_TO_SHELVE,
-    MIN_PROFIT,
+    MIN_PROFIT_TO_BUY,
+    MIN_VALUE_TO_SHELVE,
 } from "@src/autoRestock/autoRestockConfig";
 import { getCurrentShopStock } from "@src/database/myShopStock";
 
@@ -27,11 +30,6 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
         stockButton.closest("tr")?.querySelector("td")?.innerText,
     );
 
-    if (itemName.includes("Dubloon Coin")) {
-        return;
-    }
-
-    // Deposit junk
     const listing = (await callProcedure(getListings, itemName))[0];
     const currentStock = await callProcedure(getCurrentShopStock, itemName);
     if (listing) {
@@ -41,7 +39,10 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
         itemLabel.append(` | ${currentStock}`);
     }
 
-    if (listing && listing.price < MIN_PROFIT) {
+    if (
+        (listing && listing.price < MIN_VALUE_TO_SHELVE) ||
+        ITEMS_TO_ALWAYS_DEPOSIT.includes(itemName)
+    ) {
         depositButton.click();
         depositedAnything = true;
         return;
@@ -50,7 +51,10 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
     // Stock until the max number of copies
     const aboutToBeStocked = quantityAboutToBeStocked.get(itemName) || 0;
 
-    if (aboutToBeStocked < MAX_COPIES_TO_SHELVE) {
+    if (
+        aboutToBeStocked < MAX_COPIES_TO_SHELVE ||
+        itemName.match(EASY_TO_SELL_REGEX)
+    ) {
         stockButton.click();
         quantityAboutToBeStocked.set(itemName, aboutToBeStocked + 1);
         stockedAnything = true;

@@ -11,9 +11,12 @@ import { NameToPrice } from "@src/contentScripts/myShopStock";
 import { normalDelay } from "@src/util/randomDelay";
 import { waitForTabStatus } from "@src/util/tabControl";
 import { underCut } from "@src/autoRestock/buyingItems";
-import { DAYS_BEFORE_REPRICING_SHOP_STOCK } from "@src/autoRestock/autoRestockConfig";
+import {
+    DAYS_BEFORE_REPRICING_SHOP_STOCK,
+    ITEMS_TO_ALWAYS_DEPOSIT,
+    MIN_VALUE_TO_SHELVE,
+} from "@src/autoRestock/autoRestockConfig";
 import { daysAgo } from "@src/util/dateTime";
-import { getJellyNeoEntry } from "@src/database/jellyNeo";
 
 function myShopStockUrl(page: number): string {
     if (page === 1) {
@@ -137,8 +140,12 @@ export async function undercutMarketPrices(): Promise<void> {
 
     const priceUpdates: NameToPrice = {};
     for (const { itemName, price } of previouslyStockedItems) {
+        if (ITEMS_TO_ALWAYS_DEPOSIT.includes(itemName)) {
+            console.log(`Ignoring ${itemName}`);
+            continue;
+        }
         const newPrice = await getUnderCutPrice(itemName, price);
-        if (newPrice > 0 && newPrice < 1000) {
+        if (newPrice > 0 && newPrice < underCut(MIN_VALUE_TO_SHELVE)) {
             console.log(`${itemName} is only worth ${newPrice}, removing`);
             priceUpdates[itemName] = -1;
         } else if (price > 0 && newPrice > price) {

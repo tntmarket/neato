@@ -5,12 +5,15 @@ import { normalDelay } from "@src/util/randomDelay";
 import { callProcedure } from "@src/controlPanel/procedure";
 import { ensureListener } from "@src/util/scriptInjection";
 import {
-    MIN_PROFIT,
+    MIN_PROFIT_TO_BUY,
     MIN_PROFIT_RATIO,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
     MIN_PROFIT_TO_QUICK_BUY,
 } from "@src/autoRestock/autoRestockConfig";
 import { calculateBuyOpportunity } from "@src/autoRestock/buyingItems";
+import { getJsonSetting } from "@src/util/localStorage";
+
+const blackMarketItems = getJsonSetting<string[]>("blackMarketItems", []);
 
 ensureListener(
     (
@@ -52,9 +55,14 @@ async function startHaggling(itemToHaggleFor: string) {
     for (const item of $All(".shop-item")) {
         const { itemName } = shopItemToStockData(item);
         if (itemName === itemToHaggleFor) {
-            const itemImage = assume(
-                item.querySelector<HTMLElement>(".item-img"),
-            );
+            let itemImage = item.querySelector<HTMLElement>(".item-img");
+            if (!itemImage) {
+                // Black Market Goods boon
+                itemImage = assume(
+                    item.querySelector<HTMLElement>(".item-obelisk"),
+                );
+                blackMarketItems.set(blackMarketItems.get().concat([itemName]));
+            }
             itemImage.click();
             // Time to click "YES" in the modal
             await normalDelay(222);
@@ -139,7 +147,7 @@ async function annotateShopItem(item: HTMLElement) {
     ) {
         item.style.backgroundColor = "lightcoral";
     } else if (
-        futureHaggleProfit > MIN_PROFIT &&
+        futureHaggleProfit > MIN_PROFIT_TO_BUY &&
         futureHaggleProfitRatio > MIN_PROFIT_RATIO
     ) {
         item.style.backgroundColor = "lightblue";

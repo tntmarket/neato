@@ -5,14 +5,17 @@ import browser, { Tabs } from "webextension-polyfill";
 import { assume } from "@src/util/typeAssertions";
 import { waitForTabStatus } from "@src/util/tabControl";
 import { sleep } from "@src/util/randomDelay";
-import { MIN_PROFIT } from "@src/autoRestock/autoRestockConfig";
+import {
+    MIN_PROFIT_TO_BUY,
+    MIN_VALUE_TO_SHELVE,
+} from "@src/autoRestock/autoRestockConfig";
 import { getCurrentShopStock } from "@src/database/myShopStock";
 
 export type PriceCheckOutcome = { tooManySearches?: true; onFairyQuest?: true };
 
 export async function checkPrice(
     itemName: string,
-    abortIfCheaperThan = MIN_PROFIT,
+    abortIfCheaperThan = MIN_PROFIT_TO_BUY,
 ): Promise<PriceCheckOutcome> {
     const numberOwned = await getCurrentShopStock(itemName);
     const { sections, tooManySearches, onFairyQuest } = await searchShopWizard(
@@ -22,7 +25,7 @@ export async function checkPrice(
                   numberOfSections: 6,
                   maxRequests: 9,
                   // If we are currently selling an item, do a very accurate check, to make sure we're the cheapest
-                  abortIfCheaperThan: 1000,
+                  abortIfCheaperThan: MIN_VALUE_TO_SHELVE,
               }
             : {
                   itemName,
