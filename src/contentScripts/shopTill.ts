@@ -3,7 +3,7 @@ import { $, getInputByValue } from "@src/util/domHelpers";
 import { ensureListener } from "@src/util/scriptInjection";
 
 const tillAmount = parseInt(
-    assume($(".content p b")).innerText.replace(",", ""),
+    assume($(".content p b")).innerText.replaceAll(",", ""),
 );
 
 const withdrawInput = assume($<HTMLInputElement>('input[name="amount"]'));

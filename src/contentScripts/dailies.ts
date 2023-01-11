@@ -1,10 +1,6 @@
 import { $, $All, getInputByValue, waitReady } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
-import {
-    normalDelay,
-    randomUniformBetween,
-    sleep,
-} from "@src/util/randomDelay";
+import { normalDelay, randomUniformBetween } from "@src/util/randomDelay";
 
 function selectOption(selector: string, value: string) {
     assume($<HTMLSelectElement>(selector)).value = value;
@@ -12,12 +8,10 @@ function selectOption(selector: string, value: string) {
 
 async function trudysSurprise() {
     const iframe = assume($<HTMLIFrameElement>("#frameTest"));
-    console.log(iframe);
 
     await normalDelay(2222);
 
     const canvas = assume(iframe.contentDocument?.querySelector("canvas"));
-    console.log(canvas);
 
     const { top, height, left, width } = canvas.getBoundingClientRect();
 
@@ -47,11 +41,11 @@ async function trudysSurprise() {
     );
 }
 
-async function bankInterest() {
+function bankInterest() {
     assume(getInputByValue("Collect Interest")).click();
 }
 
-async function fruitMachine() {
+function fruitMachine() {
     assume(getInputByValue("Spin, spin, spin!")).click();
 }
 
@@ -69,51 +63,49 @@ async function graveDanger() {
     }
 }
 
-async function desertedTomb() {
+function desertedTomb() {
     getInputByValue("Open the door...")?.click();
     getInputByValue("Continue on...")?.click();
 }
 
-async function coltzansShrine() {
+function coltzansShrine() {
     getInputByValue("Approach the Shrine")?.click();
 }
 
-async function appleBobbing() {
+function appleBobbing() {
     assume($("#bob_button")).click();
 }
 
-async function anchorManagement() {
+function anchorManagement() {
     assume($("#btn-fire a")).click();
 }
 
-async function tombola() {
+function tombola() {
     getInputByValue("Play Tombola!")?.click();
 }
 
-async function shopOfOffers() {}
-
-async function giantJelly() {
+function giantJelly() {
     getInputByValue("Grab some Jelly")?.click();
 }
 
-async function giantOmelette() {
+function giantOmelette() {
     getInputByValue("Grab some Omelette")?.click();
 }
 
-async function symolHole() {
+function symolHole() {
     selectOption("#goin", "3");
     assume($("#enterhole")).click();
 }
 
-async function discardedPlushie() {
+function discardedPlushie() {
     getInputByValue("Talk to the Plushie")?.click();
 }
 
-async function underwaterFishing() {
+function underwaterFishing() {
     getInputByValue("Reel In Your Line")?.click();
 }
 
-async function stockMarket() {
+function stockMarket() {
     if (location.href.includes("type=list")) {
         for (const row of $All('#content table[align="center"] tr')) {
             const price = parseInt(row.innerText.split("\t")[5]);
@@ -134,18 +126,18 @@ async function stockMarket() {
     }
 }
 
-async function guessTheWeightOfTheMarrow() {
+function guessTheWeightOfTheMarrow() {
     const weightInput = assume($<HTMLInputElement>('input[name="guess"]'));
     weightInput.value = Math.round(randomUniformBetween(200, 800)).toString();
     getInputByValue("Guess!")?.click();
 }
 
-async function turmaculus() {
+function turmaculus() {
     selectOption("#wakeup", "4");
     assume($('button[type="submit"]')).click();
 }
 
-async function grumpyKing() {
+function grumpyKing() {
     selectOption("#qp1", "How");
     selectOption("#qp2", "are");
     selectOption("#qp3", "another name for");
@@ -167,7 +159,7 @@ async function grumpyKing() {
     assume($('button[type="submit"]')).click();
 }
 
-async function wiseKing() {
+function wiseKing() {
     selectOption("#qp1", "I believe that");
     selectOption("#qp2", "charity");
     selectOption("#qp3", "is equivalent to");
@@ -178,11 +170,11 @@ async function wiseKing() {
     assume($('button[type="submit"]')).click();
 }
 
-async function wheelOfKnowledge() {
-    assume($("#wheelButtonSpin")).click();
+function snowager() {
+    assume($("#process_snowager button")).click();
 }
 
-async function winterKiosk() {
+function winterKiosk() {
     const cardSelector = $<HTMLSelectElement>('select[name="card_id"]');
     if (cardSelector) {
         if (cardSelector.querySelector('option[value="8903"]')) {
@@ -208,10 +200,26 @@ async function winterKiosk() {
     });
 }
 
-async function meteor() {
+function meteor() {
     const dropdown = assume($<HTMLSelectElement>('select[name="pickstep"]'));
     dropdown.value = "1";
     getInputByValue("Submit")?.click();
+}
+
+function coconutShy() {
+    if (document.body.innerText.includes("No+more+throws")) {
+        return;
+    }
+    location.reload();
+}
+
+function faerieCaverns() {
+    getInputByValue("Enter")?.click();
+
+    getInputByValue("Right")?.click();
+    // getInputByValue("Left")?.click();
+
+    getInputByValue("Click to see what you've found")?.click();
 }
 
 const linkToRoutine = {
@@ -224,7 +232,6 @@ const linkToRoutine = {
     "/halloween/applebobbing.phtml": appleBobbing,
     "/pirates/anchormanagement.phtml": anchorManagement,
     "/island/tombola.phtml": tombola,
-    "/shop_of_offers.phtml?slorg_payout=yes": shopOfOffers,
     "/jelly/jelly.phtml": giantJelly,
     "/prehistoric/omelette.phtml": giantOmelette,
     "/medieval/symolhole.phtml": symolHole,
@@ -235,20 +242,18 @@ const linkToRoutine = {
     "/medieval/turmaculus.phtml": turmaculus,
     "/medieval/grumpyking.phtml": grumpyKing,
     "/medieval/wiseking.phtml": wiseKing,
-    "/medieval/knowledge.phtml": wheelOfKnowledge,
+    "/winter/snowager.phtml": snowager,
     "/winter/kiosk.phtml": winterKiosk,
     "/winter/kiosk2.phtml": winterKiosk,
     "/moon/meteor.phtml?getclose=1": meteor,
+    "/halloween/process_cocoshy.phtml?coconut=3": coconutShy,
+    "/faerieland/caverns/index.phtml": faerieCaverns,
 };
 
 Object.entries(linkToRoutine).forEach(async ([link, routine]) => {
     if (location.href.includes(link)) {
         await waitReady();
-
-        const delay = randomUniformBetween(1111, 11111);
-        console.log("COMPLETE, waiting... ", Math.round(delay * 100) / 100);
-        await sleep(delay);
-
+        await normalDelay(1111);
         await routine();
     }
 });
@@ -279,32 +284,12 @@ if (location.href.includes("/medieval/potatocounter.phtml")) {
     potatoCounter();
 }
 
-async function wheelOfMediocrity() {
-    await waitReady();
-    await normalDelay(1111);
-    assume($("#wheelButtonSpin")).click();
-}
-
-if (location.href.includes("/prehistoric/mediocrity.phtml")) {
-    wheelOfMediocrity();
-}
-
-async function wheelOfExcitement() {
-    await waitReady();
-    await normalDelay(1111);
-    assume($("#wheelButtonSpin")).click();
-}
-
-if (location.href.includes("/faerieland/wheel.phtml")) {
-    wheelOfExcitement();
-}
-
-async function academyTraining() {
+function academyTraining() {
     if (location.href.includes("process_academy.phtml")) {
         location.assign("/pirates/academy.phtml?type=courses");
     }
     if (location.href.includes("type=status")) {
-        getInputByValue("Pay")?.click();
+        // getInputByValue("Pay")?.click();
         getInputByValue("Complete Course!")?.click();
     }
     if (location.href.includes("type=courses")) {

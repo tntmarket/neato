@@ -24,6 +24,7 @@ import {
     TIME_BETWEEN_RESTOCK_BANS,
     TIME_BETWEEN_RESTOCK_CYCLES,
 } from "@src/autoRestock/autoRestockConfig";
+import {doDailies} from "@src/contentScriptActions/doDailies";
 
 let latestAutomationSessionId = 0;
 
@@ -240,6 +241,8 @@ export function ControlPanel() {
     const [retryInfinitely, setRetryInfinitely] = useState(false);
     const [isAutomating, setIsAutomating] = useState(false);
 
+    const [isDoingDailies, setIsDoingDailies] = useState(false);
+
     const {
         loggedIntoMainAccount,
         currentAccountCanSearch,
@@ -332,6 +335,17 @@ export function ControlPanel() {
             <ListingBrowser />
             <MyShopStockBrowser />
             <PurchaseLog />
+            <OnOffToggle
+                label="Do Dailies"
+                checked={isDoingDailies}
+                onChange={async () => {
+                    if (!isDoingDailies) {
+                        setIsDoingDailies(true);
+                        await doDailies();
+                        setIsDoingDailies(false);
+                    }
+                }}
+            />
         </div>
     );
 }

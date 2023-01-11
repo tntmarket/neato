@@ -135,8 +135,8 @@ export function estimateDaysToImpactfulPriceChange(
     const marketPrice = listings[0].price;
 
     return (
-        // Generally keep prices 2 weeks fresh
-        14 +
+        // Generally keep prices 2-3 weeks fresh
+        18 +
         // 60 days to check 100np items
         // 42 days to check 200np items
         // 18 days to check 500np items
