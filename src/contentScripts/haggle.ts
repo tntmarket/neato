@@ -1,7 +1,7 @@
 import { $, $All } from "@src/util/domHelpers";
 import { assume } from "@src/util/typeAssertions";
 import { getDarkestPixel } from "@src/captcha";
-import {ensureListener, onPageUnload, waitPageUnload} from "@src/util/scriptInjection";
+import { ensureListener, waitPageUnload } from "@src/util/scriptInjection";
 
 export type HaggleDetails = {
     itemName: string;
