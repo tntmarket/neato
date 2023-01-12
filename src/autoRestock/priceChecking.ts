@@ -61,22 +61,22 @@ export async function checkPrice(
 // out their original result. We can manually visit their shop to clear
 // it instead
 async function clearAnyInvalidListingsInFront(itemName: string) {
-    const listings = await getListings(itemName);
+    const listings = await getListings(itemName, 100);
     for (const listing of listings) {
         // The next price is fresh, we can exit
         if (hoursAgo(listing.lastSeen) < 1) {
             return;
         }
 
-        // It's old, we failed to find it's section. Check that it's
-        // still valid, to unclog potential invalid listings
+        // It's old, and we failed to replace it's section.
+        // Check that it's still valid, to unclog stale listings
         const tab = await checkUserShopListing(listing.link);
         const tabId = assume(tab.id);
 
         await waitForTabStatus(tabId, "complete");
         await sleep(300);
 
-        return browser.tabs.sendMessage(tabId, {
+        await browser.tabs.sendMessage(tabId, {
             action: "CHECK_USER_SHOP_ITEM",
         });
     }
