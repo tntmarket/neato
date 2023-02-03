@@ -29,6 +29,7 @@ const dailyLinks = [
     "/medieval/potatocounter.phtml",
     "/jelly/jelly.phtml",
     "/prehistoric/omelette.phtml",
+    "/pirates/forgottenshore.phtml",
     "/safetydeposit.phtml?obj_name=Five+Dubloon+Coin&category=3",
     "/pirates/academy.phtml?type=status",
 ];

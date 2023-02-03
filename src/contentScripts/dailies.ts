@@ -222,6 +222,10 @@ function faerieCaverns() {
     getInputByValue("Click to see what you've found")?.click();
 }
 
+function forgottenShore() {
+    $("#shore_back a")?.click();
+}
+
 const linkToRoutine = {
     "/trudys_surprise.phtml": trudysSurprise,
     "/bank.phtml": bankInterest,
@@ -248,6 +252,7 @@ const linkToRoutine = {
     "/moon/meteor.phtml?getclose=1": meteor,
     "/halloween/process_cocoshy.phtml?coconut=3": coconutShy,
     "/faerieland/caverns/index.phtml": faerieCaverns,
+    "/pirates/forgottenshore.phtml": forgottenShore,
 };
 
 Object.entries(linkToRoutine).forEach(async ([link, routine]) => {
