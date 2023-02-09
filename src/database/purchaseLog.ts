@@ -57,16 +57,20 @@ export type ProfitReport = {
 
 export type ShopReport = {
     shopId: number;
+    numberOfPurchases: number;
+    cost: number;
     profit: number;
     profitPercent: number;
 };
 
-export type ProfitPerShop = {
+export type PointsPerShop = {
     [shopId: number]: number;
 };
 
 export async function getProfitReport(limit = 500): Promise<ProfitReport> {
-    const profitPerShop: ProfitPerShop = {};
+    const profitPerShop: PointsPerShop = {};
+    const costPerShop: PointsPerShop = {};
+    const purchasesPerShop: PointsPerShop = {};
     let totalProfit = 0;
     let totalCost = 0;
 
@@ -74,8 +78,12 @@ export async function getProfitReport(limit = 500): Promise<ProfitReport> {
     purchases.forEach((purchase) => {
         if (profitPerShop[purchase.shopId] === undefined) {
             profitPerShop[purchase.shopId] = 0;
+            costPerShop[purchase.shopId] = 0;
+            purchasesPerShop[purchase.shopId] = 0;
         }
         profitPerShop[purchase.shopId] += purchase.profit;
+        costPerShop[purchase.shopId] += purchase.price;
+        purchasesPerShop[purchase.shopId] += 1;
         totalProfit += purchase.profit;
         totalCost += purchase.price;
     });
@@ -84,6 +92,8 @@ export async function getProfitReport(limit = 500): Promise<ProfitReport> {
         profitPerShop: Object.entries(profitPerShop).map(
             ([shopId, profit]) => ({
                 shopId: parseInt(shopId),
+                cost: costPerShop[parseInt(shopId)],
+                numberOfPurchases: purchasesPerShop[parseInt(shopId)],
                 profit,
                 profitPercent: profit / totalProfit,
             }),

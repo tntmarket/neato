@@ -27,14 +27,24 @@ export function PurchaseLog() {
         purchases: [],
     });
 
+    const recentPurchases = profitReport.purchases.slice(0, 50);
+    const totalRecentCost = recentPurchases
+        .map((purchase) => purchase.price)
+        .reduce((valueA, valueB) => valueA + valueB, 0);
+    const totalRecentProfit = recentPurchases
+        .map((purchase) => purchase.profit)
+        .reduce((valueA, valueB) => valueA + valueB, 0);
+
     return (
         <>
             <table className="table table-compact w-full">
                 <thead>
                     <tr>
                         <th>Shop Id</th>
-                        <th>Profit</th>
-                        <th>Profit Percent</th>
+                        <th>Purchases ({profitReport.purchases.length})</th>
+                        <th>Cost ({profitReport.totalCost})</th>
+                        <th>Profit ({profitReport.totalProfit})</th>
+                        <th>Profit %</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -44,6 +54,8 @@ export function PurchaseLog() {
                                 {shopReport.shopId} -{" "}
                                 {shopIdToName[shopReport.shopId]}
                             </th>
+                            <td>{shopReport.numberOfPurchases}</td>
+                            <td>{shopReport.cost}</td>
                             <td>{shopReport.profit}</td>
                             <td>
                                 {Math.round(shopReport.profitPercent * 100)}%
@@ -55,15 +67,15 @@ export function PurchaseLog() {
             <table className="table table-compact w-full">
                 <thead>
                     <tr>
-                        <th>Item</th>
+                        <th>Item ({recentPurchases.length})</th>
                         <th>Rarity</th>
-                        <th>Price ({profitReport.totalCost})</th>
-                        <th>Profit ({profitReport.totalProfit})</th>
+                        <th>Price ({totalRecentCost})</th>
+                        <th>Profit ({totalRecentProfit})</th>
                         <th>Purchase Time</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {profitReport.purchases.slice(0, 50).map((purchase) => (
+                    {recentPurchases.map((purchase) => (
                         <tr key={purchase.purchaseTime}>
                             <th>{purchase.itemName}</th>
                             <td>{purchase.rarity}</td>
