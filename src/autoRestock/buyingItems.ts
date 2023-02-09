@@ -7,7 +7,6 @@ import {
 import { HaggleDetails } from "@src/contentScripts/haggle";
 import { getNpcStockPrice, NpcStockData } from "@src/database/npcStock";
 import { assume } from "@src/util/typeAssertions";
-import { ljs } from "@src/util/logging";
 import { normalDelay, sleep } from "@src/util/randomDelay";
 import { getCurrentShopStock, incrementStock } from "@src/database/myShopStock";
 import browser from "webextension-polyfill";
@@ -17,12 +16,14 @@ import {
     ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW,
     MAX_COPIES_TO_SHELVE,
     MAX_COPIES_TO_SHELVE_IF_VALUABLE,
-    MIN_PROFIT_TO_BUY,
     MIN_PROFIT_RATIO,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
+    MIN_PROFIT_TO_BUY,
     MIN_PROFIT_TO_QUICK_BUY,
     TIME_TO_CHOOSE_ITEM,
+    TIME_TO_CHOOSE_ITEM_VARIANCE_RANGE,
     TIME_TO_MAKE_HAGGLE_OFFER,
+    TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE,
 } from "@src/autoRestock/autoRestockConfig";
 import { getJellyNeoEntry, JellyNeoEntry } from "@src/database/jellyNeo";
 import { recordPurchase } from "@src/database/purchaseLog";
@@ -220,9 +221,23 @@ async function bestItemToHaggleFor(
 }
 
 function makeHumanTypable(amount: number) {
-    const tail = amount % 1000;
+    if (amount <= 10000) {
+        const tail = amount % 100;
+        const head = amount - tail;
+        const repeatedTail = 11 * Math.floor(tail / 11);
+        return head + repeatedTail;
+    }
+
+    if (amount <= 100000) {
+        const tail = amount % 1000;
+        const head = amount - tail;
+        const repeatedTail = 111 * Math.floor(tail / 111);
+        return head + repeatedTail;
+    }
+
+    const tail = amount % 10000;
     const head = amount - tail;
-    const repeatedTail = 111 * Math.floor(tail / 111);
+    const repeatedTail = 1111 * Math.floor(tail / 1111);
     return head + repeatedTail;
 }
 
@@ -320,7 +335,7 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         return { status: "NPC_SHOP_IS_EMPTY" };
     }
 
-    await normalDelay(TIME_TO_CHOOSE_ITEM);
+    await normalDelay(TIME_TO_CHOOSE_ITEM, TIME_TO_CHOOSE_ITEM_VARIANCE_RANGE);
     const session = await HaggleSession.start(tabId, buyOpportunity.itemName);
 
     let nextOffer = 0;
@@ -344,6 +359,7 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         if (situation.status === "OFFER_ACCEPTED") {
             await incrementStock(buyOpportunity.itemName);
             await recordPurchase({
+                shopId,
                 itemName: buyOpportunity.itemName,
                 price: nextOffer,
             });
@@ -362,7 +378,10 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
             // Failsafe in case we get stuck, and the price isn't budging
             nextOffer = situation.currentAsk;
         }
-        await normalDelay(TIME_TO_MAKE_HAGGLE_OFFER);
+        await normalDelay(
+            TIME_TO_MAKE_HAGGLE_OFFER,
+            TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE,
+        );
         await session.makeOffer(nextOffer);
     }
 

@@ -26,10 +26,10 @@ export function CredentialsInput({
         <>
             <div className="form-control">
                 <label className="label">
-                    <span className="label-text">Credentials</span>
+                    <span className="label-text-alt">Credentials</span>
                 </label>
                 <textarea
-                    className="textarea textarea-bordered textarea-primary h-24"
+                    className="textarea textarea-bordered textarea-xs textarea-primary h-28"
                     placeholder={`[{ username: "", password: "" }]`}
                     value={credentialJSON}
                     onChange={(event) => {
@@ -48,13 +48,13 @@ export function CredentialsInput({
                     }}
                 />
             </div>
-            <div>
+            <div className="mt-1">
                 {credentials.map((loginInfo, accountId) => (
                     <input
                         key={accountId}
                         type="radio"
                         name="radio-2"
-                        className={`radio ${
+                        className={`radio ml-1 ${
                             fairyQuests[accountId]
                                 ? "radio-warning"
                                 : isNotBanned(banTimes, fairyQuests, accountId)

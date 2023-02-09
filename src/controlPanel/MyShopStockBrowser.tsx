@@ -4,7 +4,7 @@ import { getAllStockedItems } from "@src/database/myShopStock";
 import { getCachedRarity } from "@src/database/jellyNeo";
 
 export function MyShopStockBrowser() {
-    const [itemName, setItemName] = useState("?");
+    const [itemName, setItemName] = useState("Filter by Item Name...");
     const stockedItems = useLiveQuery(() => getAllStockedItems(), [], []);
 
     const totalQuantity = stockedItems
@@ -16,20 +16,15 @@ export function MyShopStockBrowser() {
 
     return (
         <>
-            <div className="form-control">
-                <label className="label cursor-pointer">
-                    <span className="label-text">Browse My Shop Inventory</span>
-                    <input
-                        type="text"
-                        placeholder="Two Dubloon Coin"
-                        className="input input-bordered input-primary w-full max-w-xs"
-                        value={itemName}
-                        onChange={(event) => {
-                            setItemName(event.target.value.trim());
-                        }}
-                    />
-                </label>
-            </div>
+            <input
+                type="text"
+                placeholder="Two Dubloon Coin"
+                className="input input-bordered input-primary w-full"
+                value={itemName}
+                onChange={(event) => {
+                    setItemName(event.target.value);
+                }}
+            />
             <div className="overflow-x-auto">
                 <table className="table table-compact w-full">
                     <thead>

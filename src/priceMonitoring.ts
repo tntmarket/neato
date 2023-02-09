@@ -141,6 +141,7 @@ export function estimateDaysToImpactfulPriceChange(
         // 42 days to check 200np items
         // 18 days to check 500np items
         60 * likelyToStayJunk(marketPrice) +
+        // 40 days to check 1000000np items
         // 20 days to check 100000np items
         // 14 days to check 50000np items
         // 6 days to check 20000np items
@@ -194,6 +195,10 @@ function liquidityIsShallow(listings: Listing[]) {
 }
 
 function likelyToStayExpensive(marketPrice: number) {
+    if (marketPrice >= 1000000) {
+        return 2;
+    }
+
     if (marketPrice > 100000) {
         return 1;
     }
@@ -202,6 +207,7 @@ function likelyToStayExpensive(marketPrice: number) {
         return 0;
     }
 
+    // 2   if 1000000
     // 1   if 100000
     // 0.7 if 50000
     // 0   if 10000

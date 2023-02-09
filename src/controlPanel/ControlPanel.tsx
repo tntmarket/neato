@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import css from "./styles.module.css";
 import { OnOffToggle } from "@src/controlPanel/OnOffToggle";
-import { SearchWizardInput } from "@src/controlPanel/SearchWizardInput";
+import { PsuedoSuperShopWizard } from "@src/controlPanel/PsuedoSuperShopWizard";
 import { checkPrice, PriceCheckOutcome } from "@src/autoRestock/priceChecking";
 import { getProcedure } from "@src/controlPanel/procedure";
 import { NpcShopInput } from "@src/controlPanel/NpcShopInput";
@@ -14,7 +13,6 @@ import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
 import { useAccounts, waitTillNextHour } from "@src/accounts";
 import browser from "webextension-polyfill";
 import { quickStockItems } from "@src/contentScriptActions/quickStock";
-import { ListingBrowser } from "@src/controlPanel/ListingBrowser";
 import { MyShopStockBrowser } from "@src/controlPanel/MyShopStockBrowser";
 import { withdrawShopTill } from "@src/contentScriptActions/shopTill";
 import { PurchaseLog } from "@src/controlPanel/PurchaseLog";
@@ -24,7 +22,8 @@ import {
     TIME_BETWEEN_RESTOCK_BANS,
     TIME_BETWEEN_RESTOCK_CYCLES,
 } from "@src/autoRestock/autoRestockConfig";
-import {doDailies} from "@src/contentScriptActions/doDailies";
+import { doDailies } from "@src/contentScriptActions/doDailies";
+import { PanelSection } from "@src/controlPanel/PanelSection";
 
 let latestAutomationSessionId = 0;
 
@@ -238,7 +237,6 @@ const CONSECUTIVE_FAILURES_BEFORE_ABORT = 10;
 export function ControlPanel() {
     const [shopIds, setShopIds] = useState(shopIdsSetting.get());
     const [consecutiveFailures, setConsecutiveFailures] = useState(0);
-    const [retryInfinitely, setRetryInfinitely] = useState(false);
     const [isAutomating, setIsAutomating] = useState(false);
 
     const [isDoingDailies, setIsDoingDailies] = useState(false);
@@ -272,6 +270,10 @@ export function ControlPanel() {
     }, []);
 
     useEffect(() => {
+        if (consecutiveFailures >= CONSECUTIVE_FAILURES_BEFORE_ABORT) {
+            setIsAutomating(false);
+        }
+
         if (isAutomating) {
             restockAndReprice(
                 loggedIntoMainAccount,
@@ -290,62 +292,74 @@ export function ControlPanel() {
                         (consecutiveFailures) => consecutiveFailures + 1,
                     );
                     console.error(error);
-                })
-                .finally(() => {
-                    setIsAutomating(false);
                 });
-        } else if (retryInfinitely) {
-            if (consecutiveFailures < CONSECUTIVE_FAILURES_BEFORE_ABORT) {
-                setIsAutomating(true);
-            } else {
-                setRetryInfinitely(false);
-            }
         }
     }, [isAutomating]);
 
     return (
-        <div className={`bg-base-100 ${css.controlPanel}`}>
-            <OnOffToggle
-                label={`Keep Retrying - ${consecutiveFailures}/${CONSECUTIVE_FAILURES_BEFORE_ABORT}`}
-                checked={retryInfinitely}
-                onChange={() => {
-                    setRetryInfinitely(!retryInfinitely);
-                }}
-            />
-            <OnOffToggle
-                label="Automate"
-                checked={isAutomating}
-                onChange={() => {
-                    setIsAutomating(!isAutomating);
-                }}
-            />
-            <SearchWizardInput
-                onSearch={async (itemName: string) => {
-                    await checkPrice(itemName, 100);
-                }}
-            />
-            <NpcShopInput
-                value={shopIds}
-                onChange={(shopIds) => {
-                    setShopIds(shopIds);
-                    shopIdsSetting.set(shopIds);
-                }}
-            />
-            {accountsUI}
-            <ListingBrowser />
-            <MyShopStockBrowser />
-            <PurchaseLog />
-            <OnOffToggle
-                label="Do Dailies"
-                checked={isDoingDailies}
-                onChange={async () => {
-                    if (!isDoingDailies) {
-                        setIsDoingDailies(true);
-                        await doDailies();
-                        setIsDoingDailies(false);
-                    }
-                }}
-            />
+        <div className="bg-base-100 p-2 min-w-fit prose">
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <button
+                        className={`btn btn-outline ${
+                            isDoingDailies ? "loading" : ""
+                        }`}
+                        disabled={isDoingDailies}
+                        onClick={async () => {
+                            if (!isDoingDailies) {
+                                setIsDoingDailies(true);
+                                await doDailies();
+                                setIsDoingDailies(false);
+                            }
+                        }}
+                    >
+                        Do Dailies
+                    </button>
+                </div>
+                <OnOffToggle
+                    label={`Automate - ${consecutiveFailures}/${CONSECUTIVE_FAILURES_BEFORE_ABORT}`}
+                    checked={isAutomating}
+                    onChange={() => {
+                        if (!isAutomating) {
+                            setIsAutomating(true);
+                        }
+                        if (isAutomating) {
+                            setIsAutomating(false);
+                        }
+                    }}
+                />
+            </div>
+
+            <PanelSection name="Configuration">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>{accountsUI}</div>
+                    <div>
+                        <NpcShopInput
+                            value={shopIds}
+                            onChange={(shopIds) => {
+                                setShopIds(shopIds);
+                                shopIdsSetting.set(shopIds);
+                            }}
+                        />
+                    </div>
+                </div>
+            </PanelSection>
+
+            <PanelSection name="Psuedo Super Shop Wizard">
+                <PsuedoSuperShopWizard
+                    onSearch={async (itemName: string) => {
+                        await checkPrice(itemName, 100);
+                    }}
+                />
+            </PanelSection>
+
+            <PanelSection name="Shop Inventory">
+                <MyShopStockBrowser />
+            </PanelSection>
+
+            <PanelSection name="Purchase and Profit">
+                <PurchaseLog />
+            </PanelSection>
         </div>
     );
 }

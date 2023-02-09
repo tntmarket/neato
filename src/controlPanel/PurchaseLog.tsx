@@ -1,59 +1,53 @@
 import React from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { getPurchaseLog } from "@src/database/purchaseLog";
+import { getProfitReport } from "@src/database/purchaseLog";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { getMarketPrice } from "@src/database/listings";
-import { underCut } from "@src/autoRestock/buyingItems";
-import { getJellyNeoEntry } from "@src/database/jellyNeo";
 
 dayjs.extend(relativeTime);
 
 export function PurchaseLog() {
-    const purchasesWithProfit = useLiveQuery(
-        async () => {
-            const purchases = await getPurchaseLog(50);
-            return Promise.all(
-                purchases.map(async (purchase) => {
-                    const marketPrice = await getMarketPrice(purchase.itemName);
-                    const jellyNeoEntry = await getJellyNeoEntry(
-                        purchase.itemName,
-                    );
-                    return {
-                        ...purchase,
-                        profit:
-                            marketPrice > 0
-                                ? underCut(marketPrice) - purchase.price
-                                : 0,
-                        rarity: jellyNeoEntry?.rarity || 0,
-                    };
-                }),
-            );
-        },
-        [],
-        [],
-    );
-    const totalCost = purchasesWithProfit
-        .map((purchase) => purchase.price)
-        .reduce((valueA, valueB) => valueA + valueB, 0);
-    const totalProfit = purchasesWithProfit
-        .map((purchase) => purchase.profit)
-        .reduce((valueA, valueB) => valueA + valueB, 0);
+    const profitReport = useLiveQuery(() => getProfitReport(500), [], {
+        profitPerShop: [],
+        totalProfit: 0,
+        totalCost: 0,
+        purchases: [],
+    });
 
     return (
-        <div className="overflow-x-auto">
+        <>
             <table className="table table-compact w-full">
                 <thead>
                     <tr>
-                        <th>Item ({purchasesWithProfit.length})</th>
+                        <th>Shop Id</th>
+                        <th>Profit</th>
+                        <th>Profit Percent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {profitReport.profitPerShop.map((shopReport) => (
+                        <tr key={shopReport.shopId}>
+                            <th>{shopReport.shopId}</th>
+                            <td>{shopReport.profit}</td>
+                            <td>
+                                {Math.round(shopReport.profitPercent * 100)}%
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            <table className="table table-compact w-full">
+                <thead>
+                    <tr>
+                        <th>Item</th>
                         <th>Rarity</th>
-                        <th>Price ({totalCost})</th>
-                        <th>Profit ({totalProfit})</th>
+                        <th>Price ({profitReport.totalCost})</th>
+                        <th>Profit ({profitReport.totalProfit})</th>
                         <th>Purchase Time</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {purchasesWithProfit.map((purchase) => (
+                    {profitReport.purchases.slice(0, 50).map((purchase) => (
                         <tr key={purchase.purchaseTime}>
                             <th>{purchase.itemName}</th>
                             <td>{purchase.rarity}</td>
@@ -64,6 +58,6 @@ export function PurchaseLog() {
                     ))}
                 </tbody>
             </table>
-        </div>
+        </>
     );
 }

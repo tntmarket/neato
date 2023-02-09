@@ -10,28 +10,28 @@ export function NpcShopInput({ value, onChange }: Props) {
 
     return (
         <div className="form-control">
-            <label className="label cursor-pointer">
-                <span className="label-text">NPC Shops to Monitor</span>
-                <input
-                    type="text"
-                    placeholder="[1,7]"
-                    className="input input-bordered input-primary w-full max-w-xs"
-                    value={shopIds}
-                    onChange={(event) => {
-                        setShopIds(event.target.value);
-
-                        const inputtedShopIds = tryParseJson<number[]>(
-                            event.target.value,
-                        );
-                        if (
-                            inputtedShopIds &&
-                            !isEqual(tryParseJson(shopIds), inputtedShopIds)
-                        ) {
-                            onChange(inputtedShopIds);
-                        }
-                    }}
-                />
+            <label className="label">
+                <span className="label-text-alt">NPC Shops to Monitor</span>
             </label>
+            <input
+                type="text"
+                placeholder="[1,7]"
+                className="input input-bordered input-primary w-full"
+                value={shopIds}
+                onChange={(event) => {
+                    setShopIds(event.target.value);
+
+                    const inputtedShopIds = tryParseJson<number[]>(
+                        event.target.value,
+                    );
+                    if (
+                        inputtedShopIds &&
+                        !isEqual(tryParseJson(shopIds), inputtedShopIds)
+                    ) {
+                        onChange(inputtedShopIds);
+                    }
+                }}
+            />
         </div>
     );
 }

@@ -1,29 +1,21 @@
 import { assume } from "@src/util/typeAssertions";
 import { $ } from "@src/util/domHelpers";
 import { randomPlusMinus } from "@src/util/randomDelay";
-import { clearInterval, setInterval } from "worker-timers";
+import { setInterval } from "worker-timers";
 
 export type Coordinate = { x: number; y: number };
 
 export function getDarkestPixel(
     captchaImage: HTMLImageElement,
 ): Promise<Coordinate> {
-    return new Promise<Coordinate>(async (resolve) => {
-        const imagePath = captchaImage.src;
-
+    return new Promise<Coordinate>(async (resolve, reject) => {
         const image = new Image();
 
-        image.src = imagePath;
-        const refreshImageIfUnloaded = setInterval(() => {
-            console.error(
-                "Refreshing CAPTCHA image, cause it took too long to load",
-            );
-            captchaImage.src = imagePath + `&t=${new Date().getTime()}`;
-            image.src = captchaImage.src;
-        }, 30000);
+        image.src = captchaImage.src;
+
+        setInterval(reject, 30000);
 
         image.onload = function () {
-            clearInterval(refreshImageIfUnloaded);
             const width = image.width;
             const height = image.height;
 
