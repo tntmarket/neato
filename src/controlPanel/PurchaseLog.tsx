@@ -6,6 +6,19 @@ import relativeTime from "dayjs/plugin/relativeTime";
 
 dayjs.extend(relativeTime);
 
+const shopIdToName: {
+    [shopId: number]: string;
+} = {
+    1: "Food",
+    7: "Book",
+    14: "Chocolate",
+    15: "Baked",
+    98: "Plushie",
+    4: "Clothes",
+    37: "Snow Food",
+    73: "Kayla's Potion",
+};
+
 export function PurchaseLog() {
     const profitReport = useLiveQuery(() => getProfitReport(500), [], {
         profitPerShop: [],
@@ -27,7 +40,10 @@ export function PurchaseLog() {
                 <tbody>
                     {profitReport.profitPerShop.map((shopReport) => (
                         <tr key={shopReport.shopId}>
-                            <th>{shopReport.shopId}</th>
+                            <th>
+                                {shopReport.shopId} -{" "}
+                                {shopIdToName[shopReport.shopId]}
+                            </th>
                             <td>{shopReport.profit}</td>
                             <td>
                                 {Math.round(shopReport.profitPercent * 100)}%

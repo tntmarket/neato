@@ -39,7 +39,8 @@ export async function getNextItemsToReprice(limit: number): Promise<string[]> {
 
     const rankingResults: RankingResult[] = [];
 
-    console.time("Calculate pricing priority");
+    console.log("Calculating pricing priority");
+    console.time("Calculated pricing priority");
     await Promise.all(
         [...itemNamesToMonitor].map(async (itemName) => {
             const listings = await getListings(itemName);
@@ -99,7 +100,7 @@ export async function getNextItemsToReprice(limit: number): Promise<string[]> {
             });
         }),
     );
-    console.timeEnd("Calculate pricing priority");
+    console.timeEnd("Calculated pricing priority");
 
     rankingResults.sort((a, b) => a.daysUntilStale - b.daysUntilStale);
 

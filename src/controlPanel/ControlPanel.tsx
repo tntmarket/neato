@@ -127,6 +127,7 @@ async function cycleThroughShopsUntilNoProfitableItems(
     const restockBanned = !sawAnyItem;
     if (restockBanned) {
         // Wait longer if we are restock banned
+        console.log("We're restock banned, waiting...");
         await normalDelay(TIME_BETWEEN_RESTOCK_BANS);
     }
     return { boughtAnyItem, sawAnyItem };
@@ -204,6 +205,7 @@ async function restockAndReprice(
                 if (autoBuy) {
                     // If we have no accounts available, just wait instead of
                     // immediately starting another restocking run
+                    console.log("Waiting before next run...");
                     await normalDelay(TIME_BETWEEN_RESTOCK_CYCLES);
                 } else {
                     // If we're not auto buying, wait until shop wizard ban is up
@@ -236,8 +238,10 @@ const CONSECUTIVE_FAILURES_BEFORE_ABORT = 10;
 
 export function ControlPanel() {
     const [shopIds, setShopIds] = useState(shopIdsSetting.get());
+
     const [consecutiveFailures, setConsecutiveFailures] = useState(0);
-    const [isAutomating, setIsAutomating] = useState(false);
+    const [isDoingRun, setIsDoingRun] = useState(false);
+    const [runNumber, setRunNumber] = useState(0);
 
     const [isDoingDailies, setIsDoingDailies] = useState(false);
 
@@ -270,11 +274,8 @@ export function ControlPanel() {
     }, []);
 
     useEffect(() => {
-        if (consecutiveFailures >= CONSECUTIVE_FAILURES_BEFORE_ABORT) {
-            setIsAutomating(false);
-        }
-
-        if (isAutomating) {
+        if (runNumber > 0) {
+            setIsDoingRun(true);
             restockAndReprice(
                 loggedIntoMainAccount,
                 currentAccountCanSearch,
@@ -292,16 +293,28 @@ export function ControlPanel() {
                         (consecutiveFailures) => consecutiveFailures + 1,
                     );
                     console.error(error);
+                })
+                .finally(() => {
+                    setIsDoingRun(false);
+
+                    if (
+                        consecutiveFailures >= CONSECUTIVE_FAILURES_BEFORE_ABORT
+                    ) {
+                        setRunNumber(0);
+                        return;
+                    }
+
+                    setRunNumber((runNumber) => runNumber + 1);
                 });
         }
-    }, [isAutomating]);
+    }, [runNumber]);
 
     return (
         <div className="bg-base-100 p-2 min-w-fit prose">
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <button
-                        className={`btn btn-outline ${
+                        className={`btn btn-outline btn-sm ${
                             isDoingDailies ? "loading" : ""
                         }`}
                         disabled={isDoingDailies}
@@ -317,14 +330,30 @@ export function ControlPanel() {
                     </button>
                 </div>
                 <OnOffToggle
-                    label={`Automate - ${consecutiveFailures}/${CONSECUTIVE_FAILURES_BEFORE_ABORT}`}
-                    checked={isAutomating}
+                    label={
+                        runNumber === -1
+                            ? "Stopping after this run..."
+                            : runNumber === 0
+                            ? "Start Automating"
+                            : `Run ${runNumber} / Failure ${consecutiveFailures}`
+                    }
+                    checked={runNumber !== 0}
+                    className={
+                        runNumber === -1
+                            ? "toggle-warning"
+                            : isDoingRun
+                            ? "toggle-info"
+                            : consecutiveFailures >
+                              CONSECUTIVE_FAILURES_BEFORE_ABORT
+                            ? "toggle-error"
+                            : "toggle-primary"
+                    }
                     onChange={() => {
-                        if (!isAutomating) {
-                            setIsAutomating(true);
-                        }
-                        if (isAutomating) {
-                            setIsAutomating(false);
+                        if (runNumber <= 0) {
+                            setRunNumber(1);
+                            setConsecutiveFailures(0);
+                        } else {
+                            setRunNumber(-1);
                         }
                     }}
                 />
