@@ -142,13 +142,13 @@ async function annotateShopItem(item: HTMLElement) {
     extraInfo.append(haggleBuySellLabel);
 
     if (
-        futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY &&
-        futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY
+        futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY.get() &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get()
     ) {
         item.style.backgroundColor = "lightcoral";
     } else if (
-        futureHaggleProfit > MIN_PROFIT_TO_BUY &&
-        futureHaggleProfitRatio > MIN_PROFIT_RATIO
+        futureHaggleProfit > MIN_PROFIT_TO_BUY.get() &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO.get()
     ) {
         item.style.backgroundColor = "lightblue";
     } else if (futureHaggleProfit < 1000 || futureHaggleProfitRatio < 0.2) {

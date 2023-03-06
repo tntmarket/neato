@@ -25,9 +25,6 @@ export function CredentialsInput({
     return (
         <>
             <div className="form-control">
-                <label className="label">
-                    <span className="label-text-alt">Credentials</span>
-                </label>
                 <textarea
                     className="textarea textarea-bordered textarea-xs textarea-primary h-28"
                     placeholder={`[{ username: "", password: "" }]`}

@@ -26,7 +26,7 @@ import {
     TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE,
 } from "@src/autoRestock/autoRestockConfig";
 import { getJellyNeoEntry, JellyNeoEntry } from "@src/database/jellyNeo";
-import { recordPurchase } from "@src/database/purchaseLog";
+import { recordRestockAttempt } from "@src/database/purchaseLog";
 
 type BuyOpportunity = {
     itemName: string;
@@ -144,8 +144,8 @@ function isWorth({
     fellBackToJellyNeo,
 }: BuyOpportunity) {
     const isMinimallyProfitable =
-        futureHaggleProfit > MIN_PROFIT_TO_BUY &&
-        futureHaggleProfitRatio > MIN_PROFIT_RATIO;
+        futureHaggleProfit > MIN_PROFIT_TO_BUY.get() &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO.get();
     if (!isMinimallyProfitable) {
         return false;
     }
@@ -161,8 +161,8 @@ function isWorth({
     }
 
     const isVeryProfitable =
-        futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY &&
-        futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY;
+        futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY.get() &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get();
     if (isVeryProfitable) {
         // Buy more copies of very valuable items
         return alreadyStocked < MAX_COPIES_TO_SHELVE_IF_VALUABLE;
@@ -253,8 +253,8 @@ export async function getNextOffer({
     const profit = (await getMarketPrice(itemName)) - stockPrice;
     const profitRatio = profit / stockPrice;
     const probablyHighlyContested =
-        profit > MIN_PROFIT_TO_QUICK_BUY &&
-        profitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY;
+        profit > MIN_PROFIT_TO_QUICK_BUY.get() &&
+        profitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get();
     if (probablyHighlyContested) {
         return makeHumanTypable(currentAsk);
     }
@@ -328,14 +328,25 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
     const buyOpportunity = await bestItemToHaggleFor(tabId, shopId);
 
     if (buyOpportunity === true) {
+        await recordRestockAttempt({
+            status: "NOTHING_WORTH_BUYING",
+            shopId,
+        });
         return { status: "NOTHING_WORTH_BUYING" };
     }
 
     if (buyOpportunity === false) {
+        await recordRestockAttempt({
+            status: "NPC_SHOP_IS_EMPTY",
+            shopId,
+        });
         return { status: "NPC_SHOP_IS_EMPTY" };
     }
 
-    await normalDelay(TIME_TO_CHOOSE_ITEM, TIME_TO_CHOOSE_ITEM_VARIANCE_RANGE);
+    await normalDelay(
+        TIME_TO_CHOOSE_ITEM.get(),
+        TIME_TO_CHOOSE_ITEM_VARIANCE_RANGE.get(),
+    );
     const session = await HaggleSession.start(tabId, buyOpportunity.itemName);
 
     let nextOffer = 0;
@@ -354,11 +365,17 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         }
         if (situation.status === "SOLD_OUT") {
             await normalDelay(1111);
+            await recordRestockAttempt({
+                status: "SOLD_OUT",
+                shopId,
+                itemName: buyOpportunity.itemName,
+            });
             return { status: "SOLD_OUT" };
         }
         if (situation.status === "OFFER_ACCEPTED") {
             await incrementStock(buyOpportunity.itemName);
-            await recordPurchase({
+            await recordRestockAttempt({
+                status: "OFFER_ACCEPTED",
                 shopId,
                 itemName: buyOpportunity.itemName,
                 price: nextOffer,
@@ -379,8 +396,8 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
             nextOffer = situation.currentAsk;
         }
         await normalDelay(
-            TIME_TO_MAKE_HAGGLE_OFFER,
-            TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE,
+            TIME_TO_MAKE_HAGGLE_OFFER.get(),
+            TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE.get(),
         );
         await session.makeOffer(nextOffer);
     }

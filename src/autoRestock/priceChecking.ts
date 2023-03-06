@@ -15,7 +15,7 @@ export type PriceCheckOutcome = { tooManySearches?: true; onFairyQuest?: true };
 
 export async function checkPrice(
     itemName: string,
-    abortIfCheaperThan = MIN_PROFIT_TO_BUY,
+    abortIfCheaperThan = MIN_PROFIT_TO_BUY.get(),
 ): Promise<PriceCheckOutcome> {
     const numberOwned = await getCurrentShopStock(itemName);
     const { sections, tooManySearches, onFairyQuest } = await searchShopWizard(
@@ -25,7 +25,7 @@ export async function checkPrice(
                   numberOfSections: 6,
                   maxRequests: 9,
                   // If we are currently selling an item, do a very accurate check, to make sure we're the cheapest
-                  abortIfCheaperThan: MIN_VALUE_TO_SHELVE,
+                  abortIfCheaperThan: MIN_VALUE_TO_SHELVE.get(),
               }
             : {
                   itemName,

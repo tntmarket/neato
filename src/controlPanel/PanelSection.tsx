@@ -7,9 +7,9 @@ type Props = {
 
 export function PanelSection({ children, name }: Props) {
     return (
-        <>
+        <div>
             <h3>{name}</h3>
             <div>{children}</div>
-        </>
+        </div>
     );
 }

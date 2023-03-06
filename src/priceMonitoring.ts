@@ -229,7 +229,8 @@ function proximityToBuyThreshold(marketPrice: number) {
     const typicalNpcPrice = 1000;
     const typicalProfit = Math.max(0, marketPrice - typicalNpcPrice);
     const percentageFromThreshold =
-        Math.abs(typicalProfit - MIN_PROFIT_TO_BUY) / MIN_PROFIT_TO_BUY;
+        Math.abs(typicalProfit - MIN_PROFIT_TO_BUY.get()) /
+        MIN_PROFIT_TO_BUY.get();
 
     if (percentageFromThreshold > 1) {
         return 0;
@@ -252,8 +253,8 @@ function proximityToQuickBuyThreshold(marketPrice: number) {
     const typicalNpcPrice = 2000;
     const typicalProfit = Math.max(0, marketPrice - typicalNpcPrice);
     const percentageFromThreshold =
-        Math.abs(typicalProfit - MIN_PROFIT_TO_QUICK_BUY) /
-        MIN_PROFIT_TO_QUICK_BUY;
+        Math.abs(typicalProfit - MIN_PROFIT_TO_QUICK_BUY.get()) /
+        MIN_PROFIT_TO_QUICK_BUY.get();
 
     if (percentageFromThreshold > 0.5) {
         return 0;

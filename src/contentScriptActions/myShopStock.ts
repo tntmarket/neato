@@ -145,7 +145,7 @@ export async function undercutMarketPrices(): Promise<void> {
             continue;
         }
         const newPrice = await getUnderCutPrice(itemName, price);
-        if (newPrice > 0 && newPrice < underCut(MIN_VALUE_TO_SHELVE)) {
+        if (newPrice > 0 && newPrice < underCut(MIN_VALUE_TO_SHELVE.get())) {
             console.log(`${itemName} is only worth ${newPrice}, removing`);
             priceUpdates[itemName] = -1;
         } else if (price > 0 && newPrice > price) {

@@ -17,14 +17,25 @@ const shopIdToName: {
     4: "Clothes",
     37: "Snow Food",
     73: "Kayla's Potion",
+    8: "Card",
+    48: "Usuki",
+    20: "Tropical Food",
+    30: "Spooky Food",
+    35: "Slushie",
+    81: "Brightvale Fruit",
 };
 
 export function PurchaseLog() {
-    const profitReport = useLiveQuery(() => getProfitReport(500), [], {
+    const profitReport = useLiveQuery(() => getProfitReport(1000), [], {
         profitPerShop: [],
         totalProfit: 0,
         totalCost: 0,
         purchases: [],
+
+        totalRefreshes: 0,
+        profitPerRefresh: 0,
+        totalStockedRefreshes: 0,
+        profitPerStockedRefresh: 0,
     });
 
     const recentPurchases = profitReport.purchases.slice(0, 50);
@@ -36,15 +47,26 @@ export function PurchaseLog() {
         .reduce((valueA, valueB) => valueA + valueB, 0);
 
     return (
-        <>
+        <div className="overflow-x-auto">
             <table className="table table-compact w-full">
                 <thead>
                     <tr>
                         <th>Shop Id</th>
-                        <th>Purchases ({profitReport.purchases.length})</th>
                         <th>Cost ({profitReport.totalCost})</th>
                         <th>Profit ({profitReport.totalProfit})</th>
                         <th>Profit %</th>
+                        <th>
+                            Per Refresh (
+                            {Math.round(profitReport.profitPerRefresh)})
+                        </th>
+                        <th>
+                            Per Scan (
+                            {Math.round(profitReport.profitPerStockedRefresh)})
+                        </th>
+                        <th>Refreshes ({profitReport.totalRefreshes})</th>
+                        <th>Scans ({profitReport.totalStockedRefreshes})</th>
+                        <th>Buys ({profitReport.purchases.length})</th>
+                        <th>Sellouts</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -54,12 +76,19 @@ export function PurchaseLog() {
                                 {shopReport.shopId} -{" "}
                                 {shopIdToName[shopReport.shopId]}
                             </th>
-                            <td>{shopReport.numberOfPurchases}</td>
                             <td>{shopReport.cost}</td>
                             <td>{shopReport.profit}</td>
                             <td>
                                 {Math.round(shopReport.profitPercent * 100)}%
                             </td>
+                            <td>{Math.round(shopReport.profitPerRefresh)}</td>
+                            <td>
+                                {Math.round(shopReport.profitPerStockedRefresh)}
+                            </td>
+                            <td>{shopReport.totalRefreshes}</td>
+                            <td>{shopReport.totalStockedRefreshes}</td>
+                            <td>{shopReport.purchaseCount}</td>
+                            <td>{shopReport.soldOutCount}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -68,6 +97,7 @@ export function PurchaseLog() {
                 <thead>
                     <tr>
                         <th>Item ({recentPurchases.length})</th>
+                        <th>Shop</th>
                         <th>Rarity</th>
                         <th>Price ({totalRecentCost})</th>
                         <th>Profit ({totalRecentProfit})</th>
@@ -76,16 +106,17 @@ export function PurchaseLog() {
                 </thead>
                 <tbody>
                     {recentPurchases.map((purchase) => (
-                        <tr key={purchase.purchaseTime}>
+                        <tr key={purchase.time}>
                             <th>{purchase.itemName}</th>
+                            <td>{shopIdToName[purchase.shopId]}</td>
                             <td>{purchase.rarity}</td>
                             <td>{purchase.price}</td>
                             <td>{purchase.profit}</td>
-                            <td>{dayjs(purchase.purchaseTime).fromNow()}</td>
+                            <td>{dayjs(purchase.time).fromNow()}</td>
                         </tr>
                     ))}
                 </tbody>
             </table>
-        </>
+        </div>
     );
 }

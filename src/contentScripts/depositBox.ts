@@ -56,13 +56,13 @@ async function annotateWarehouseRows() {
             continue;
         }
 
-        if (price < MIN_VALUE_TO_SHELVE) {
+        if (price < MIN_VALUE_TO_SHELVE.get()) {
             row.style.opacity = "0.2";
             // row.style.display = "none";
             continue;
         }
 
-        if (price >= MIN_VALUE_TO_SHELVE) {
+        if (price >= MIN_VALUE_TO_SHELVE.get()) {
             const currentStock = await callProcedure(
                 getCurrentShopStock,
                 itemName,

@@ -3,103 +3,203 @@ import { getMarketPrice } from "@src/database/listings";
 import { getJellyNeoEntry } from "@src/database/jellyNeo";
 import { underCut } from "@src/autoRestock/buyingItems";
 
-export type PurchaseEntry = PurchaseEntryData & {
-    purchaseTime: number;
+export type RestockAttempt = RestockAttemptData & {
+    time: number;
 };
-export type PurchaseEntryData = {
+
+export type RestockAttemptData =
+    | Purchase
+    | {
+          status: "SOLD_OUT";
+          shopId: number;
+          itemName: string;
+      }
+    | {
+          status: "NOTHING_WORTH_BUYING";
+          shopId: number;
+      }
+    | {
+          status: "NPC_SHOP_IS_EMPTY";
+          shopId: number;
+      };
+
+type Purchase = {
+    status: "OFFER_ACCEPTED";
     shopId: number;
     itemName: string;
     price: number;
 };
 
-export type Purchase = PurchaseEntry & {
+type PurchaseWithProfit = Purchase & {
+    time: number;
     profit: number;
     rarity: number | 0;
 };
 
-export async function recordPurchase(purchase: PurchaseEntryData) {
-    return db.transaction("rw", db.purchases, () =>
-        db.purchases.add({
-            purchaseTime: Date.now(),
-            ...purchase,
+export async function recordRestockAttempt(attempt: RestockAttemptData) {
+    return db.transaction("rw", db.restockAttempts, () =>
+        db.restockAttempts.add({
+            time: Date.now(),
+            ...attempt,
         }),
     );
 }
 
-async function getPurchases(limit = 50): Promise<Purchase[]> {
-    const purchases = await db.transaction("r", db.purchases, () => {
-        const purchases = db.purchases.orderBy("purchaseTime").reverse();
-        return limit ? purchases.limit(limit).toArray() : purchases.toArray();
-    });
-
+async function getPurchasesWithProfit(
+    attempts: RestockAttempt[],
+): Promise<PurchaseWithProfit[]> {
     return Promise.all(
-        purchases.map(async (purchase) => {
-            const marketPrice = await getMarketPrice(purchase.itemName);
-            const jellyNeoEntry = await getJellyNeoEntry(purchase.itemName);
-            return {
-                ...purchase,
-                profit:
-                    marketPrice > 0
-                        ? underCut(marketPrice) - purchase.price
-                        : 0,
-                rarity: jellyNeoEntry?.rarity || 0,
-            };
-        }),
+        attempts
+            .filter((attempt) => attempt.status === "OFFER_ACCEPTED")
+            .map(async (attempt) => {
+                if (attempt.status !== "OFFER_ACCEPTED") {
+                    throw new Error("Failed to filter OFFER_ACCEPTED");
+                }
+                const marketPrice = await getMarketPrice(attempt.itemName);
+                const jellyNeoEntry = await getJellyNeoEntry(attempt.itemName);
+                return {
+                    ...attempt,
+                    profit:
+                        marketPrice > 0
+                            ? underCut(marketPrice) - attempt.price
+                            : 0,
+                    rarity: jellyNeoEntry?.rarity || 0,
+                };
+            }),
     );
 }
 
 export type ProfitReport = {
-    profitPerShop: ShopReport[];
+    profitPerShop: ShopReportDetailed[];
     totalProfit: number;
     totalCost: number;
-    purchases: Purchase[];
+    purchases: PurchaseWithProfit[];
+
+    totalRefreshes: number;
+    totalStockedRefreshes: number;
+    profitPerRefresh: number;
+    profitPerStockedRefresh: number;
 };
 
 export type ShopReport = {
     shopId: number;
-    numberOfPurchases: number;
+
+    nothingStockedCount: number;
+    nothingWorthBuyingCount: number;
+    soldOutCount: number;
+    purchaseCount: number;
+
     cost: number;
     profit: number;
-    profitPercent: number;
 };
 
-export type PointsPerShop = {
-    [shopId: number]: number;
+export type ShopReportDetailed = ShopReport & {
+    profitPercent: number;
+
+    totalRefreshes: number;
+    totalStockedRefreshes: number;
+
+    profitPerRefresh: number;
+    profitPerStockedRefresh: number;
+};
+
+export type ReportByShop = {
+    [shopId: number]: ShopReport;
 };
 
 export async function getProfitReport(limit = 500): Promise<ProfitReport> {
-    const profitPerShop: PointsPerShop = {};
-    const costPerShop: PointsPerShop = {};
-    const purchasesPerShop: PointsPerShop = {};
+    const reportByShop: ReportByShop = {};
+
     let totalProfit = 0;
     let totalCost = 0;
 
-    const purchases = await getPurchases(limit);
-    purchases.forEach((purchase) => {
-        if (profitPerShop[purchase.shopId] === undefined) {
-            profitPerShop[purchase.shopId] = 0;
-            costPerShop[purchase.shopId] = 0;
-            purchasesPerShop[purchase.shopId] = 0;
+    const attempts = await db.transaction("r", db.restockAttempts, () => {
+        const attempts = db.restockAttempts.orderBy("time").reverse();
+        return limit ? attempts.limit(limit).toArray() : attempts.toArray();
+    });
+
+    attempts.forEach((attempt) => {
+        if (reportByShop[attempt.shopId] === undefined) {
+            reportByShop[attempt.shopId] = {
+                shopId: attempt.shopId,
+
+                nothingStockedCount: 0,
+                nothingWorthBuyingCount: 0,
+                soldOutCount: 0,
+                purchaseCount: 0,
+
+                cost: 0,
+                profit: 0,
+            };
         }
-        profitPerShop[purchase.shopId] += purchase.profit;
-        costPerShop[purchase.shopId] += purchase.price;
-        purchasesPerShop[purchase.shopId] += 1;
+
+        const shopReport = reportByShop[attempt.shopId];
+
+        if (attempt.status === "NPC_SHOP_IS_EMPTY") {
+            shopReport.nothingStockedCount += 1;
+        }
+
+        if (attempt.status === "NOTHING_WORTH_BUYING") {
+            shopReport.nothingWorthBuyingCount += 1;
+        }
+
+        if (attempt.status === "SOLD_OUT") {
+            shopReport.soldOutCount += 1;
+        }
+    });
+
+    const purchases = await getPurchasesWithProfit(attempts);
+    purchases.forEach((purchase) => {
+        const shopReport = reportByShop[purchase.shopId];
+        shopReport.profit += purchase.profit;
+        shopReport.cost += purchase.price;
+        shopReport.purchaseCount += 1;
+
         totalProfit += purchase.profit;
         totalCost += purchase.price;
     });
 
+    const profitPerShop: ShopReportDetailed[] = Object.values(reportByShop).map(
+        (report) => {
+            const totalStockedRefreshes =
+                report.nothingWorthBuyingCount +
+                report.purchaseCount +
+                report.soldOutCount;
+            const totalRefreshes =
+                totalStockedRefreshes + report.nothingStockedCount;
+
+            return {
+                ...report,
+
+                profitPercent: report.profit / Math.max(totalProfit, 1) || 0,
+
+                totalRefreshes,
+                totalStockedRefreshes,
+
+                profitPerRefresh: report.profit / Math.max(totalRefreshes, 1),
+                profitPerStockedRefresh:
+                    report.profit / Math.max(totalStockedRefreshes, 1) || 0,
+            };
+        },
+    );
+
+    const totalRefreshes = profitPerShop
+        .map((report) => report.totalRefreshes)
+        .reduce((a, b) => a + b);
+
+    const totalStockedRefreshes = profitPerShop
+        .map((report) => report.totalStockedRefreshes)
+        .reduce((a, b) => a + b);
+
     return {
-        profitPerShop: Object.entries(profitPerShop).map(
-            ([shopId, profit]) => ({
-                shopId: parseInt(shopId),
-                cost: costPerShop[parseInt(shopId)],
-                numberOfPurchases: purchasesPerShop[parseInt(shopId)],
-                profit,
-                profitPercent: profit / totalProfit,
-            }),
-        ),
+        profitPerShop,
         purchases,
         totalCost,
         totalProfit,
+        totalRefreshes,
+        profitPerRefresh: totalProfit / Math.max(totalRefreshes, 1),
+        totalStockedRefreshes,
+        profitPerStockedRefresh:
+            totalProfit / Math.max(totalStockedRefreshes, 1),
     };
 }

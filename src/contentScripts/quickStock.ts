@@ -40,7 +40,7 @@ $All('input[value="stock"]').forEach(async (stockButton) => {
     }
 
     if (
-        (listing && listing.price < MIN_VALUE_TO_SHELVE) ||
+        (listing && listing.price < MIN_VALUE_TO_SHELVE.get()) ||
         ITEMS_TO_ALWAYS_DEPOSIT.includes(itemName)
     ) {
         depositButton.click();

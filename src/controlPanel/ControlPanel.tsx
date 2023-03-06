@@ -17,13 +17,16 @@ import { MyShopStockBrowser } from "@src/controlPanel/MyShopStockBrowser";
 import { withdrawShopTill } from "@src/contentScriptActions/shopTill";
 import { PurchaseLog } from "@src/controlPanel/PurchaseLog";
 import {
+    extraConfigurableSettings,
     MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP,
+    MIN_PROFIT_TO_BUY,
     TIME_BETWEEN_REFRESHES,
     TIME_BETWEEN_RESTOCK_BANS,
     TIME_BETWEEN_RESTOCK_CYCLES,
 } from "@src/autoRestock/autoRestockConfig";
 import { doDailies } from "@src/contentScriptActions/doDailies";
 import { PanelSection } from "@src/controlPanel/PanelSection";
+import { NumberSettingInput } from "@src/controlPanel/NumberSettingInput";
 
 let latestAutomationSessionId = 0;
 
@@ -201,17 +204,9 @@ async function restockAndReprice(
         }
         if (tooManySearches) {
             const unbannedAccount = await switchToUnbannedAccount();
-            if (!unbannedAccount) {
-                if (autoBuy) {
-                    // If we have no accounts available, just wait instead of
-                    // immediately starting another restocking run
-                    console.log("Waiting before next run...");
-                    await normalDelay(TIME_BETWEEN_RESTOCK_CYCLES);
-                } else {
-                    // If we're not auto buying, wait until shop wizard ban is up
-                    await waitTillNextHour();
-                }
-                return;
+            if (!unbannedAccount && !autoBuy) {
+                // If we're not auto buying, wait until shop wizard ban is up
+                await waitTillNextHour();
             }
         }
     } else {
@@ -304,7 +299,10 @@ export function ControlPanel() {
                         return;
                     }
 
-                    setRunNumber((runNumber) => runNumber + 1);
+                    console.log("Waiting before next run...");
+                    normalDelay(TIME_BETWEEN_RESTOCK_CYCLES).then(() => {
+                        setRunNumber((runNumber) => runNumber + 1);
+                    });
                 });
         }
     }, [runNumber]);
@@ -359,34 +357,33 @@ export function ControlPanel() {
                 />
             </div>
 
-            <PanelSection name="Configuration">
-                <div className="grid grid-cols-2 gap-4">
-                    <div>{accountsUI}</div>
-                    <div>
-                        <NpcShopInput
-                            value={shopIds}
-                            onChange={(shopIds) => {
-                                setShopIds(shopIds);
-                                shopIdsSetting.set(shopIds);
-                            }}
-                        />
-                    </div>
-                </div>
-            </PanelSection>
+            <div className="grid grid-cols-2 gap-4">
+                <PanelSection name="Accounts">{accountsUI}</PanelSection>
+                <PanelSection name="Auto Buy Configuration">
+                    <NpcShopInput
+                        value={shopIds}
+                        onChange={(shopIds) => {
+                            setShopIds(shopIds);
+                            shopIdsSetting.set(shopIds);
+                        }}
+                    />
+                </PanelSection>
+            </div>
 
-            <PanelSection name="Psuedo Super Shop Wizard">
-                <PsuedoSuperShopWizard
-                    onSearch={async (itemName: string) => {
-                        await checkPrice(itemName, 100);
-                    }}
-                />
-            </PanelSection>
+            <div className="grid grid-cols-2 gap-4">
+                <PanelSection name="Psuedo Super Shop Wizard">
+                    <PsuedoSuperShopWizard
+                        onSearch={async (itemName: string) => {
+                            await checkPrice(itemName, 100);
+                        }}
+                    />
+                </PanelSection>
+                <PanelSection name="Shop Inventory">
+                    <MyShopStockBrowser />
+                </PanelSection>
+            </div>
 
-            <PanelSection name="Shop Inventory">
-                <MyShopStockBrowser />
-            </PanelSection>
-
-            <PanelSection name="Purchase and Profit">
+            <PanelSection name="Purchases and Profit">
                 <PurchaseLog />
             </PanelSection>
         </div>
