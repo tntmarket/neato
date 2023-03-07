@@ -10,10 +10,21 @@ import {
     Legend,
     LinearScale,
     Tooltip,
+    TimeScale,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+import "chartjs-adapter-date-fns";
+import { enUS } from "date-fns/locale";
+
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Tooltip,
+    Legend,
+    TimeScale,
+);
 
 dayjs.extend(relativeTime);
 
@@ -40,12 +51,16 @@ const PAGE_SIZE = 50;
 
 export function PurchaseLog() {
     const [numberOfEventsToLookBack, setNumberOfEventsToLookBack] =
-        useState(100);
-    const [minutesPerBucket, setMinutesPerBucket] = useState(1);
+        useState("100");
+    const [minutesPerBucket, setMinutesPerBucket] = useState("5");
     const [purchaseLogPageNumber, setPurchaseLogPageNumber] = useState(0);
 
     const profitReport = useLiveQuery(
-        () => getProfitReport(numberOfEventsToLookBack, minutesPerBucket),
+        () =>
+            getProfitReport(
+                parseInt(numberOfEventsToLookBack) || 0,
+                parseInt(minutesPerBucket) || 0,
+            ),
         [numberOfEventsToLookBack, minutesPerBucket],
         {
             profitPerShop: [],
@@ -88,9 +103,7 @@ export function PurchaseLog() {
                         className="input input-bordered input-primary input-sm w-full"
                         value={numberOfEventsToLookBack}
                         onChange={(event) => {
-                            setNumberOfEventsToLookBack(
-                                parseInt(event.target.value),
-                            );
+                            setNumberOfEventsToLookBack(event.target.value);
                         }}
                     />
                 </div>
@@ -106,7 +119,7 @@ export function PurchaseLog() {
                         className="input input-bordered input-primary input-sm w-full"
                         value={minutesPerBucket}
                         onChange={(event) => {
-                            setMinutesPerBucket(parseInt(event.target.value));
+                            setMinutesPerBucket(event.target.value);
                         }}
                     />
                 </div>
@@ -119,6 +132,17 @@ export function PurchaseLog() {
                     scales: {
                         x: {
                             stacked: true,
+                            type: "time",
+                            time: {
+                                displayFormats: {
+                                    quarter: "H:mm",
+                                },
+                            },
+                            adapters: {
+                                date: {
+                                    locale: enUS,
+                                },
+                            },
                         },
                         y: {
                             stacked: true,
@@ -126,8 +150,8 @@ export function PurchaseLog() {
                     },
                 }}
                 data={{
-                    labels: profitReport.countsOverTime.time.map((millis) =>
-                        dayjs(millis).format("H:mm"),
+                    labels: profitReport.countsOverTime.time.map(
+                        (millis) => new Date(millis),
                     ),
                     datasets: [
                         {

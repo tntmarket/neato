@@ -30,7 +30,7 @@ export const DAYS_BEFORE_REPRICING_SHOP_STOCK = 2;
 
 export const TIME_TO_CHOOSE_ITEM = getJsonSetting("Time to Choose Item", 999);
 export const TIME_TO_CHOOSE_ITEM_VARIANCE_RANGE = getJsonSetting(
-    "Time to Choose Item Variance",
+    "Time to Choose Item +/-",
     0.5,
 );
 
@@ -39,7 +39,7 @@ export const TIME_TO_MAKE_HAGGLE_OFFER = getJsonSetting(
     666,
 );
 export const TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE = getJsonSetting(
-    "Time to Make Haggle Offer Variance",
+    "Time to Make Haggle Offer +/-",
     0.5,
 );
 
