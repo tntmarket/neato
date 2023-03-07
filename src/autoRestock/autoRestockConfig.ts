@@ -43,7 +43,8 @@ export const TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE = getJsonSetting(
     0.5,
 );
 
-export const extraConfigurableSettings = [
+export const configurableSettings = [
+    [MIN_PROFIT_TO_BUY, MIN_PROFIT_RATIO],
     [MIN_PROFIT_TO_QUICK_BUY, MIN_PROFIT_RATIO_TO_QUICK_BUY],
     [TIME_TO_CHOOSE_ITEM, TIME_TO_CHOOSE_ITEM_VARIANCE_RANGE],
     [TIME_TO_MAKE_HAGGLE_OFFER, TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE],

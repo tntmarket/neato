@@ -79,18 +79,27 @@ export type ProfitReport = {
     totalStockedRefreshes: number;
     profitPerRefresh: number;
     profitPerStockedRefresh: number;
+
+    countsOverTime: CountsOverTime;
 };
 
-export type ShopReport = {
+type CountsOverTime = {
+    time: number[];
+} & {
+    [Property in keyof OutcomeCounts]: OutcomeCounts[Property][];
+};
+
+export type ShopReport = OutcomeCounts & {
     shopId: number;
-
-    nothingStockedCount: number;
-    nothingWorthBuyingCount: number;
-    soldOutCount: number;
-    purchaseCount: number;
-
     cost: number;
     profit: number;
+};
+
+type OutcomeCounts = {
+    nothingStockedCount: number;
+    nothingWorthBuyingCount: number;
+    purchaseCount: number;
+    soldOutCount: number;
 };
 
 export type ShopReportDetailed = ShopReport & {
@@ -107,7 +116,10 @@ export type ReportByShop = {
     [shopId: number]: ShopReport;
 };
 
-export async function getProfitReport(limit = 500): Promise<ProfitReport> {
+export async function getProfitReport(
+    limit = 500,
+    minutesPerBucket = 15,
+): Promise<ProfitReport> {
     const reportByShop: ReportByShop = {};
 
     let totalProfit = 0;
@@ -201,5 +213,53 @@ export async function getProfitReport(limit = 500): Promise<ProfitReport> {
         totalStockedRefreshes,
         profitPerStockedRefresh:
             totalProfit / Math.max(totalStockedRefreshes, 1),
+
+        countsOverTime: getCountsOverTime(attempts, minutesPerBucket),
     };
+}
+
+function getCountsOverTime(
+    attempts: RestockAttempt[],
+    minutesPerBucket = 15,
+): CountsOverTime {
+    const countsOverTime: CountsOverTime = {
+        time: [],
+        nothingStockedCount: [],
+        nothingWorthBuyingCount: [],
+        purchaseCount: [],
+        soldOutCount: [],
+    };
+
+    let currentTimeBucket = null;
+    for (const attempt of attempts) {
+        const roundedMillis =
+            attempt.time - (attempt.time % (1000 * 60 * minutesPerBucket));
+
+        if (!currentTimeBucket || currentTimeBucket !== roundedMillis) {
+            currentTimeBucket = roundedMillis;
+            countsOverTime.time.unshift(roundedMillis);
+            countsOverTime.nothingStockedCount.unshift(0);
+            countsOverTime.nothingWorthBuyingCount.unshift(0);
+            countsOverTime.purchaseCount.unshift(0);
+            countsOverTime.soldOutCount.unshift(0);
+        }
+
+        if (attempt.status === "NPC_SHOP_IS_EMPTY") {
+            countsOverTime.nothingStockedCount[0] += 1;
+        }
+
+        if (attempt.status === "NOTHING_WORTH_BUYING") {
+            countsOverTime.nothingWorthBuyingCount[0] += 1;
+        }
+
+        if (attempt.status === "OFFER_ACCEPTED") {
+            countsOverTime.purchaseCount[0] += 1;
+        }
+
+        if (attempt.status === "SOLD_OUT") {
+            countsOverTime.soldOutCount[0] += 1;
+        }
+    }
+
+    return countsOverTime;
 }

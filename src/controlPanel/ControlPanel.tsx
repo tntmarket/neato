@@ -17,16 +17,13 @@ import { MyShopStockBrowser } from "@src/controlPanel/MyShopStockBrowser";
 import { withdrawShopTill } from "@src/contentScriptActions/shopTill";
 import { PurchaseLog } from "@src/controlPanel/PurchaseLog";
 import {
-    extraConfigurableSettings,
     MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP,
-    MIN_PROFIT_TO_BUY,
     TIME_BETWEEN_REFRESHES,
     TIME_BETWEEN_RESTOCK_BANS,
     TIME_BETWEEN_RESTOCK_CYCLES,
 } from "@src/autoRestock/autoRestockConfig";
 import { doDailies } from "@src/contentScriptActions/doDailies";
 import { PanelSection } from "@src/controlPanel/PanelSection";
-import { NumberSettingInput } from "@src/controlPanel/NumberSettingInput";
 
 let latestAutomationSessionId = 0;
 
@@ -371,15 +368,15 @@ export function ControlPanel() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+                <PanelSection name="Shop Inventory">
+                    <MyShopStockBrowser />
+                </PanelSection>
                 <PanelSection name="Psuedo Super Shop Wizard">
                     <PsuedoSuperShopWizard
                         onSearch={async (itemName: string) => {
                             await checkPrice(itemName, 100);
                         }}
                     />
-                </PanelSection>
-                <PanelSection name="Shop Inventory">
-                    <MyShopStockBrowser />
                 </PanelSection>
             </div>
 

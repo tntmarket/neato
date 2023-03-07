@@ -16,7 +16,7 @@ export function NumberSettingInput({ setting }: SettingInputProps<number>) {
             <input
                 type="text"
                 placeholder={setting.default().toString()}
-                className="input input-bordered input-primary w-full"
+                className="input input-bordered input-primary input-sm w-full"
                 value={value}
                 onChange={(event) => {
                     setValue(event.target.value);

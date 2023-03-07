@@ -1,11 +1,6 @@
 import React, { useState } from "react";
-import {
-    extraConfigurableSettings,
-    MIN_PROFIT_RATIO,
-    MIN_PROFIT_TO_BUY,
-} from "@src/autoRestock/autoRestockConfig";
+import { configurableSettings } from "@src/autoRestock/autoRestockConfig";
 import { NumberSettingInput } from "@src/controlPanel/NumberSettingInput";
-import { PanelSection } from "@src/controlPanel/PanelSection";
 
 type Props = {
     value: number[];
@@ -43,24 +38,24 @@ export function NpcShopInput({ value, onChange }: Props) {
                 />
             </div>
             <div className="grid grid-cols-2 gap-4">
-                <NumberSettingInput setting={MIN_PROFIT_TO_BUY} />
-                <NumberSettingInput setting={MIN_PROFIT_RATIO} />
-            </div>
-            <div className="form-control">
-                <label className="label cursor-pointer">
-                    <span className="label-text">Show Extra Settings</span>
-                    <input
-                        type="checkbox"
-                        checked={showExtraSettings}
-                        className="checkbox checkbox-xs checkbox-primary"
-                        onChange={() => {
-                            setShowExtraSettings(!showExtraSettings);
-                        }}
-                    />
-                </label>
+                <div className="form-control">
+                    <label className="label cursor-pointer">
+                        <span className="label-text-alt">
+                            Show Extra Settings
+                        </span>
+                        <input
+                            type="checkbox"
+                            checked={showExtraSettings}
+                            className="checkbox checkbox-xs checkbox-primary"
+                            onChange={() => {
+                                setShowExtraSettings(!showExtraSettings);
+                            }}
+                        />
+                    </label>
+                </div>
             </div>
             {showExtraSettings
-                ? extraConfigurableSettings.map(([leftSetting, rightSetting]) =>
+                ? configurableSettings.map(([leftSetting, rightSetting]) =>
                       rightSetting ? (
                           <div
                               className="grid grid-cols-2 gap-4"
