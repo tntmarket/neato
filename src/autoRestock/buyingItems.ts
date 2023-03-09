@@ -27,6 +27,7 @@ import {
 } from "@src/autoRestock/autoRestockConfig";
 import { getJellyNeoEntry, JellyNeoEntry } from "@src/database/jellyNeo";
 import { recordRestockAttempt } from "@src/database/purchaseLog";
+import { makeHumanTypable } from "@src/util/hagglePricing";
 
 type BuyOpportunity = {
     itemName: string;
@@ -220,27 +221,6 @@ async function bestItemToHaggleFor(
     return worthyOpportunities[0];
 }
 
-function makeHumanTypable(amount: number) {
-    if (amount <= 10000) {
-        const tail = amount % 100;
-        const head = amount - tail;
-        const repeatedTail = 11 * Math.floor(tail / 11);
-        return head + repeatedTail;
-    }
-
-    if (amount <= 100000) {
-        const tail = amount % 1000;
-        const head = amount - tail;
-        const repeatedTail = 111 * Math.floor(tail / 111);
-        return head + repeatedTail;
-    }
-
-    const tail = amount % 10000;
-    const head = amount - tail;
-    const repeatedTail = 1111 * Math.floor(tail / 1111);
-    return head + repeatedTail;
-}
-
 const CLOSE_ENOUGH = 100;
 
 export async function getNextOffer({
@@ -256,7 +236,7 @@ export async function getNextOffer({
         profit > MIN_PROFIT_TO_QUICK_BUY.get() &&
         profitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get();
     if (probablyHighlyContested) {
-        return makeHumanTypable(currentAsk);
+        return makeHumanTypable(currentAsk, true);
     }
 
     const bestPrice = Math.round(stockPrice * 0.75);
@@ -271,16 +251,14 @@ export async function getNextOffer({
         return currentAsk;
     }
 
-    const nextOffer = Math.min(
-        makeHumanTypable(lastOffer + haggleRoom / 3),
-        bestPrice,
-    );
+    let nextOffer = lastOffer + haggleRoom / 3;
 
-    // With small prices, the rounding might put us back at the same amount
-    if (nextOffer <= currentAsk) {
-        return makeHumanTypable(nextOffer + 150);
+    // If makeHumanTypable prevents our offer from increasing (due to rounding),
+    // and the price gets stuck, artificially bump the price and try again
+    while (makeHumanTypable(nextOffer) === lastOffer) {
+        nextOffer = Math.min(nextOffer * 1.01, bestPrice);
     }
-    return nextOffer;
+    return makeHumanTypable(nextOffer);
 }
 
 export type BuyOutcome =

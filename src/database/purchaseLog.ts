@@ -145,11 +145,13 @@ export async function getProfitReport(
             return db.restockAttempts
                 .where("time")
                 .above(startTimestamp)
+                .reverse()
                 .toArray();
         }
         return db.restockAttempts
             .where("time")
             .between(startTimestamp, endTimestamp)
+            .reverse()
             .toArray();
     });
 
