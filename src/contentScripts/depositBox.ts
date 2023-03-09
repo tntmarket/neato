@@ -2,6 +2,7 @@ import { $All } from "@src/util/domHelpers";
 import { callProcedure } from "@src/controlPanel/procedure";
 import { getMarketPrice } from "@src/database/listings";
 import {
+    ITEMS_TO_ALWAYS_DEPOSIT,
     MAX_COPIES_TO_SHELVE,
     MIN_VALUE_TO_SHELVE,
 } from "@src/autoRestock/autoRestockConfig";
@@ -12,20 +13,6 @@ type WarehouseItem = {
     itemName: string;
     quantity: number;
 };
-
-const HIDDEN_ITEMS = [
-    "Basic Gift Box",
-    "Red Worm",
-    "Blue Worm",
-    "Yellow Worm",
-    "Purple Worm",
-    "Empty Lantern",
-    "Spooky Treasure Map",
-    "Petpet Laboratory Map",
-    "Forgotten Shore Map Piece",
-];
-
-const HIGHLIGHTED_ITEMS = ["Two Dubloon Coin"];
 
 function getWarehouseRows() {
     return $All("tr[bgcolor]").slice(0, -1);
@@ -46,19 +33,15 @@ async function annotateWarehouseRows() {
         if (price > 0) {
             row.querySelectorAll("td")[1].append(price.toString());
         }
-        if (HIGHLIGHTED_ITEMS.includes(itemName)) {
-            row.style.background = "orange";
-            continue;
-        }
-
-        if (HIDDEN_ITEMS.includes(itemName)) {
-            // row.style.display = "none";
-            continue;
-        }
 
         if (price < MIN_VALUE_TO_SHELVE.get()) {
             row.style.opacity = "0.2";
-            // row.style.display = "none";
+            row.classList.add("junkItem");
+            continue;
+        }
+
+        if (ITEMS_TO_ALWAYS_DEPOSIT.includes(itemName)) {
+            row.style.background = "orange";
             continue;
         }
 
