@@ -32,6 +32,8 @@ const dailyLinks = [
     "/pirates/forgottenshore.phtml",
     "/safetydeposit.phtml?obj_name=Five+Dubloon+Coin&category=3",
     "/pirates/academy.phtml?type=status",
+    "/pirates/foodclub.phtml?type=collect",
+    "https://foodclub.neocities.org/",
 ];
 
 export async function doDailies() {
@@ -48,8 +50,14 @@ export async function doDailies() {
     });
     for (const path of dailyLinks) {
         await normalDelay(2222);
-        await browser.tabs.create({
-            url: `https://www.neopets.com${path}`,
-        });
+        if (path.startsWith("http")) {
+            await browser.tabs.create({
+                url: path,
+            });
+        } else {
+            await browser.tabs.create({
+                url: `https://www.neopets.com${path}`,
+            });
+        }
     }
 }
