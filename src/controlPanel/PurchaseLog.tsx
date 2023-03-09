@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { getProfitReport } from "@src/database/purchaseLog";
+import {getProfitReport, timeStringToTimestamp} from "@src/database/purchaseLog";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import {
@@ -50,18 +50,19 @@ const shopIdToName: {
 const PAGE_SIZE = 50;
 
 export function PurchaseLog() {
-    const [numberOfEventsToLookBack, setNumberOfEventsToLookBack] =
-        useState("100");
-    const [minutesPerBucket, setMinutesPerBucket] = useState("5");
+    const [startWindow, setStartWindow] = useState("-1h");
+    const [endWindow, setEndWindow] = useState("now");
+    const [numberOfBuckets, setNumberOfBuckets] = useState("60");
     const [purchaseLogPageNumber, setPurchaseLogPageNumber] = useState(0);
 
     const profitReport = useLiveQuery(
         () =>
             getProfitReport(
-                parseInt(numberOfEventsToLookBack) || 0,
-                parseInt(minutesPerBucket) || 0,
+                startWindow,
+                endWindow,
+                parseInt(numberOfBuckets) || 60,
             ),
-        [numberOfEventsToLookBack, minutesPerBucket],
+        [startWindow, endWindow, numberOfBuckets],
         {
             profitPerShop: [],
             totalProfit: 0,
@@ -95,31 +96,43 @@ export function PurchaseLog() {
             <div className="grid grid-cols-4 gap-4">
                 <div className="form-control">
                     <label className="label">
-                        <span className="label-text-alt">Number of Events</span>
+                        <span className="label-text-alt">Start Time</span>
                     </label>
                     <input
                         type="text"
-                        placeholder="1000"
+                        placeholder="-2h"
                         className="input input-bordered input-primary input-sm w-full"
-                        value={numberOfEventsToLookBack}
+                        value={startWindow}
                         onChange={(event) => {
-                            setNumberOfEventsToLookBack(event.target.value);
+                            setStartWindow(event.target.value);
                         }}
                     />
                 </div>
                 <div className="form-control">
                     <label className="label">
-                        <span className="label-text-alt">
-                            Minutes Per Bucket
-                        </span>
+                        <span className="label-text-alt">End Time</span>
+                    </label>
+                    <input
+                        type="text"
+                        placeholder="now"
+                        className="input input-bordered input-primary input-sm w-full"
+                        value={endWindow}
+                        onChange={(event) => {
+                            setEndWindow(event.target.value);
+                        }}
+                    />
+                </div>
+                <div className="form-control">
+                    <label className="label">
+                        <span className="label-text-alt">Buckets</span>
                     </label>
                     <input
                         type="text"
                         placeholder="15"
                         className="input input-bordered input-primary input-sm w-full"
-                        value={minutesPerBucket}
+                        value={numberOfBuckets}
                         onChange={(event) => {
-                            setMinutesPerBucket(event.target.value);
+                            setNumberOfBuckets(event.target.value);
                         }}
                     />
                 </div>
@@ -143,6 +156,8 @@ export function PurchaseLog() {
                                     locale: enUS,
                                 },
                             },
+                            min: timeStringToTimestamp(startWindow),
+                            max: timeStringToTimestamp(endWindow),
                         },
                         y: {
                             stacked: true,

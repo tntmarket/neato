@@ -116,18 +116,41 @@ export type ReportByShop = {
     [shopId: number]: ShopReport;
 };
 
+export function timeStringToTimestamp(timeString: string): number {
+    if (timeString === "now") {
+        return Date.now();
+    }
+    if (timeString.endsWith("h")) {
+        return Date.now() + (parseInt(timeString) || 0) * 1000 * 60 * 60;
+    }
+    return new Date(timeString).getTime() || Date.now();
+}
+
 export async function getProfitReport(
-    limit = 500,
-    minutesPerBucket = 15,
+    startTime = "-1h",
+    endTime = "now",
+    numBuckets = 60,
 ): Promise<ProfitReport> {
     const reportByShop: ReportByShop = {};
 
     let totalProfit = 0;
     let totalCost = 0;
 
+    const startTimestamp = timeStringToTimestamp(startTime);
+    const endTimestamp = timeStringToTimestamp(endTime);
+
+    console.log(startTimestamp, endTimestamp);
     const attempts = await db.transaction("r", db.restockAttempts, () => {
-        const attempts = db.restockAttempts.orderBy("time").reverse();
-        return limit ? attempts.limit(limit).toArray() : attempts.toArray();
+        if (endTime === "now") {
+            return db.restockAttempts
+                .where("time")
+                .above(startTimestamp)
+                .toArray();
+        }
+        return db.restockAttempts
+            .where("time")
+            .between(startTimestamp, endTimestamp)
+            .toArray();
     });
 
     attempts.forEach((attempt) => {
@@ -197,11 +220,11 @@ export async function getProfitReport(
 
     const totalRefreshes = profitPerShop
         .map((report) => report.totalRefreshes)
-        .reduce((a, b) => a + b);
+        .reduce((a, b) => a + b, 0);
 
     const totalStockedRefreshes = profitPerShop
         .map((report) => report.totalStockedRefreshes)
-        .reduce((a, b) => a + b);
+        .reduce((a, b) => a + b, 0);
 
     return {
         profitPerShop,
@@ -214,13 +237,16 @@ export async function getProfitReport(
         profitPerStockedRefresh:
             totalProfit / Math.max(totalStockedRefreshes, 1),
 
-        countsOverTime: getCountsOverTime(attempts, minutesPerBucket),
+        countsOverTime: getCountsOverTime(
+            attempts,
+            Math.round((endTimestamp - startTimestamp) / numBuckets),
+        ),
     };
 }
 
 function getCountsOverTime(
     attempts: RestockAttempt[],
-    minutesPerBucket = 15,
+    millisPerBucket: number,
 ): CountsOverTime {
     const countsOverTime: CountsOverTime = {
         time: [],
@@ -232,8 +258,7 @@ function getCountsOverTime(
 
     let currentTimeBucket = null;
     for (const attempt of attempts) {
-        const roundedMillis =
-            attempt.time - (attempt.time % (1000 * 60 * minutesPerBucket));
+        const roundedMillis = attempt.time - (attempt.time % millisPerBucket);
 
         if (!currentTimeBucket || currentTimeBucket !== roundedMillis) {
             currentTimeBucket = roundedMillis;
