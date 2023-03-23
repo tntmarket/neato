@@ -6,6 +6,14 @@ import { HaggleSituation } from "@src/contentScripts/haggle";
 import { waitForTabStatus, waitForTabUrlToMatch } from "@src/util/tabControl";
 import { l } from "@src/util/logging";
 import { sleep } from "@src/util/randomDelay";
+import {
+    MIN_PROFIT_RATIO,
+    MIN_PROFIT_RATIO_JUNK,
+    MIN_PROFIT_RATIO_TO_QUICK_BUY,
+    MIN_PROFIT_TO_BUY,
+    MIN_PROFIT_TO_BUY_JUNK,
+    MIN_PROFIT_TO_QUICK_BUY,
+} from "@src/autoRestock/autoRestockConfig";
 
 function shopUrl(shopId: number) {
     return `https://www.neopets.com/objects.phtml?type=shop&obj_type=${shopId}`;
@@ -51,6 +59,13 @@ export async function getNpcShopStock(
 ): Promise<NpcStockData[]> {
     const npcStock = await browser.tabs.sendMessage(tabId, {
         action: "GET_NPC_STOCK",
+        // Transfer local storage settings to content script
+        MIN_PROFIT_TO_BUY: MIN_PROFIT_TO_BUY.get(),
+        MIN_PROFIT_RATIO: MIN_PROFIT_RATIO.get(),
+        MIN_PROFIT_RATIO_TO_QUICK_BUY: MIN_PROFIT_RATIO_TO_QUICK_BUY.get(),
+        MIN_PROFIT_TO_QUICK_BUY: MIN_PROFIT_TO_QUICK_BUY.get(),
+        MIN_PROFIT_TO_BUY_JUNK: MIN_PROFIT_TO_BUY_JUNK.get(),
+        MIN_PROFIT_RATIO_JUNK: MIN_PROFIT_RATIO_JUNK.get(),
     });
 
     // Don't clobber existing entries if we temporarily get restock banned

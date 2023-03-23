@@ -10,6 +10,9 @@ export type HaggleDetails = {
 };
 
 export type HaggleSituation =
+    | {
+          status: "BOUGHT_TOO_SOON";
+      }
     | (HaggleDetails & {
           status: "HAGGLING";
       })
@@ -104,6 +107,11 @@ function extractNumber(element: HTMLElement): number {
 
 async function getHaggleSituation(): Promise<HaggleSituation> {
     const text = assume($(".container")?.innerText);
+    if (text.includes("Due to massive demand")) {
+        return {
+            status: "BOUGHT_TOO_SOON",
+        };
+    }
     if (text.includes("I accept your offer")) {
         return {
             status: "OFFER_ACCEPTED",

@@ -1,12 +1,25 @@
-import { setTimeout } from "worker-timers";
+import { setTimeout, setInterval } from "worker-timers";
 
 export function normalDelay(ms: number, percentageRange = 0.8) {
     return sleep(randomPercentRange(ms, percentageRange));
 }
 
 export function sleep(ms: number) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
+    const start = Date.now();
+    return new Promise<void>((resolve) => {
+        setTimeout(() => {
+            const end = Date.now();
+            const elapsed = end - start;
+            if (elapsed < ms) {
+                setInterval(() => {
+                    if (Date.now() - start > ms) {
+                        resolve();
+                    }
+                }, 100);
+            } else {
+                resolve();
+            }
+        }, ms);
     });
 }
 

@@ -9,6 +9,8 @@ import {
     MIN_PROFIT_RATIO,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
     MIN_PROFIT_TO_QUICK_BUY,
+    MIN_PROFIT_TO_BUY_JUNK,
+    MIN_PROFIT_RATIO_JUNK,
 } from "@src/autoRestock/autoRestockConfig";
 import { calculateBuyOpportunity } from "@src/autoRestock/buyingItems";
 import { getJsonSetting } from "@src/util/localStorage";
@@ -18,10 +20,27 @@ const blackMarketItems = getJsonSetting<string[]>("blackMarketItems", []);
 ensureListener(
     (
         request:
-            | { action: "GET_NPC_STOCK" }
+            | {
+                  action: "GET_NPC_STOCK";
+                  MIN_PROFIT_TO_BUY: number;
+                  MIN_PROFIT_RATIO: number;
+                  MIN_PROFIT_RATIO_TO_QUICK_BUY: number;
+                  MIN_PROFIT_TO_QUICK_BUY: number;
+                  MIN_PROFIT_TO_BUY_JUNK: number;
+                  MIN_PROFIT_RATIO_JUNK: number;
+              }
             | { action: "HAGGLE_FOR_ITEM"; itemName: string },
     ) => {
         if (request.action === "GET_NPC_STOCK") {
+            MIN_PROFIT_TO_BUY.set(request.MIN_PROFIT_TO_BUY);
+            MIN_PROFIT_RATIO.set(request.MIN_PROFIT_RATIO);
+            MIN_PROFIT_RATIO_TO_QUICK_BUY.set(
+                request.MIN_PROFIT_RATIO_TO_QUICK_BUY,
+            );
+            MIN_PROFIT_TO_QUICK_BUY.set(request.MIN_PROFIT_TO_QUICK_BUY);
+            MIN_PROFIT_TO_BUY_JUNK.set(request.MIN_PROFIT_TO_BUY_JUNK);
+            MIN_PROFIT_RATIO_JUNK.set(request.MIN_PROFIT_RATIO_JUNK);
+
             return scrapeNpcStock();
         }
         if (request.action === "HAGGLE_FOR_ITEM") {
@@ -95,6 +114,8 @@ async function annotateShopItem(item: HTMLElement) {
         daysToImpactfulPriceChange,
         hagglePrice,
         marketPrice,
+        futureProfit,
+        futureProfitRatio,
         futureHaggleProfit,
         futureHaggleProfitRatio,
     } = await callProcedure(calculateBuyOpportunity, npcStockData);
@@ -142,8 +163,8 @@ async function annotateShopItem(item: HTMLElement) {
     extraInfo.append(haggleBuySellLabel);
 
     if (
-        futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY.get() &&
-        futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get()
+        futureProfit > MIN_PROFIT_TO_QUICK_BUY.get() &&
+        futureProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get()
     ) {
         item.style.backgroundColor = "lightcoral";
     } else if (
@@ -151,7 +172,10 @@ async function annotateShopItem(item: HTMLElement) {
         futureHaggleProfitRatio > MIN_PROFIT_RATIO.get()
     ) {
         item.style.backgroundColor = "lightblue";
-    } else if (futureHaggleProfit < 1000 || futureHaggleProfitRatio < 0.2) {
+    } else if (
+        futureHaggleProfit <= MIN_PROFIT_TO_BUY_JUNK.get() ||
+        futureHaggleProfitRatio <= MIN_PROFIT_RATIO_JUNK.get()
+    ) {
         item.style.opacity = "0.2";
     }
 }

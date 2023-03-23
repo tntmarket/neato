@@ -15,15 +15,19 @@ import { estimateDaysToImpactfulPriceChange } from "@src/priceMonitoring";
 import {
     ASSUMED_PRICE_IF_JELLYNEO_DOESNT_KNOW,
     MAX_COPIES_TO_SHELVE,
+    MAX_COPIES_TO_SHELVE_IF_JUNK,
     MAX_COPIES_TO_SHELVE_IF_VALUABLE,
     MIN_PROFIT_RATIO,
+    MIN_PROFIT_RATIO_JUNK,
     MIN_PROFIT_RATIO_TO_QUICK_BUY,
     MIN_PROFIT_TO_BUY,
+    MIN_PROFIT_TO_BUY_JUNK,
     MIN_PROFIT_TO_QUICK_BUY,
     TIME_TO_CHOOSE_ITEM,
     TIME_TO_CHOOSE_ITEM_VARIANCE_RANGE,
     TIME_TO_MAKE_HAGGLE_OFFER,
     TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE,
+    TIME_TO_WAIT_AFTER_BUYING_ITEM,
 } from "@src/autoRestock/autoRestockConfig";
 import { getJellyNeoEntry, JellyNeoEntry } from "@src/database/jellyNeo";
 import { recordRestockAttempt } from "@src/database/purchaseLog";
@@ -38,6 +42,8 @@ type BuyOpportunity = {
     profitRatio: number;
     hagglePrice: number;
     alreadyStocked: number;
+    futureProfit: number;
+    futureProfitRatio: number;
     futureHaggleProfit: number;
     futureHaggleProfitRatio: number;
     fellBackToJellyNeo: boolean;
@@ -106,6 +112,10 @@ export async function calculateBuyOpportunity({
     // Penalize buying lots of the same item, cause the price will
     // change by time it's next up to be sold.
     const futureMarketPrice = undercutNTimes(marketPrice, alreadyStocked + 1);
+
+    const futureProfit = futureMarketPrice - price;
+    const futureProfitRatio = futureProfit / price;
+
     const futureHaggleProfit = futureMarketPrice - hagglePrice;
     const futureHaggleProfitRatio = futureHaggleProfit / hagglePrice;
 
@@ -122,6 +132,8 @@ export async function calculateBuyOpportunity({
         profit,
         profitRatio,
         hagglePrice: Math.round(hagglePrice),
+        futureProfit: Math.round(futureProfit),
+        futureProfitRatio,
         futureHaggleProfit: Math.round(futureHaggleProfit),
         futureHaggleProfitRatio,
         fellBackToJellyNeo: !listing,
@@ -139,14 +151,18 @@ async function estimateProfitability(
 
 function isWorth({
     daysToImpactfulPriceChange,
+    futureProfit,
+    futureProfitRatio,
     futureHaggleProfit,
     futureHaggleProfitRatio,
     alreadyStocked,
     fellBackToJellyNeo,
 }: BuyOpportunity) {
     const isMinimallyProfitable =
-        futureHaggleProfit > MIN_PROFIT_TO_BUY.get() &&
-        futureHaggleProfitRatio > MIN_PROFIT_RATIO.get();
+        futureHaggleProfit >
+            Math.min(MIN_PROFIT_TO_BUY_JUNK.get(), MIN_PROFIT_TO_BUY.get()) &&
+        futureHaggleProfitRatio >
+            Math.min(MIN_PROFIT_RATIO_JUNK.get(), MIN_PROFIT_RATIO.get());
     if (!isMinimallyProfitable) {
         return false;
     }
@@ -162,15 +178,23 @@ function isWorth({
     }
 
     const isVeryProfitable =
-        futureHaggleProfit > MIN_PROFIT_TO_QUICK_BUY.get() &&
-        futureHaggleProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get();
+        futureProfit > MIN_PROFIT_TO_QUICK_BUY.get() &&
+        futureProfitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get();
     if (isVeryProfitable) {
         // Buy more copies of very valuable items
         return alreadyStocked < MAX_COPIES_TO_SHELVE_IF_VALUABLE;
     }
 
-    // Don't over invest in any one items
-    return alreadyStocked < MAX_COPIES_TO_SHELVE;
+    const isKindaProfitable =
+        futureHaggleProfit > MIN_PROFIT_TO_BUY.get() &&
+        futureHaggleProfitRatio > MIN_PROFIT_RATIO.get();
+    if (isKindaProfitable) {
+        // Don't over invest in any one item
+        return alreadyStocked < MAX_COPIES_TO_SHELVE;
+    }
+
+    // Only stock one copy of barely profitable items
+    return alreadyStocked < MAX_COPIES_TO_SHELVE_IF_JUNK;
 }
 
 async function bestItemToHaggleFor(
@@ -221,7 +245,7 @@ async function bestItemToHaggleFor(
     return worthyOpportunities[0];
 }
 
-const CLOSE_ENOUGH = 100;
+const CLOSE_ENOUGH = 200;
 
 export async function getNextOffer({
     itemName,
@@ -236,7 +260,7 @@ export async function getNextOffer({
         profit > MIN_PROFIT_TO_QUICK_BUY.get() &&
         profitRatio > MIN_PROFIT_RATIO_TO_QUICK_BUY.get();
     if (probablyHighlyContested) {
-        return makeHumanTypable(currentAsk, true);
+        return makeHumanTypable(currentAsk, true, itemName);
     }
 
     const bestPrice = Math.round(stockPrice * 0.75);
@@ -255,10 +279,10 @@ export async function getNextOffer({
 
     // If makeHumanTypable prevents our offer from increasing (due to rounding),
     // and the price gets stuck, artificially bump the price and try again
-    while (makeHumanTypable(nextOffer) === lastOffer) {
+    while (makeHumanTypable(nextOffer, false, itemName) <= lastOffer) {
         nextOffer = Math.min(nextOffer * 1.01, bestPrice);
     }
-    return makeHumanTypable(nextOffer);
+    return makeHumanTypable(nextOffer, false, itemName);
 }
 
 export type BuyOutcome =
@@ -341,6 +365,11 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         if (situation.status === "OUT_OF_SPACE") {
             return { status: "OUT_OF_SPACE" };
         }
+        if (situation.status === "BOUGHT_TOO_SOON") {
+            await sleep(5000);
+            await normalDelay(1111);
+            return buyBestItemIfAny(shopId);
+        }
         if (situation.status === "SOLD_OUT") {
             await normalDelay(1111);
             await recordRestockAttempt({
@@ -360,7 +389,8 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
             });
             // Wait at least 5s before returning to shop, cause we can
             // only buy a max of 1 item every 5s
-            await normalDelay(6666);
+            await sleep(5000);
+            await normalDelay(TIME_TO_WAIT_AFTER_BUYING_ITEM);
             return {
                 status: "OFFER_ACCEPTED",
                 itemName: buyOpportunity.itemName,

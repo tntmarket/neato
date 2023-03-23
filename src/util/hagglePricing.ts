@@ -1,4 +1,8 @@
-export function makeHumanTypable(amount: number, preferToOverpay = false) {
+export function makeHumanTypable(
+    amount: number,
+    preferToOverpay = false,
+    itemName = "",
+) {
     const offerStrings = humanTypableCandidates(amount);
 
     const candidates = offerStrings

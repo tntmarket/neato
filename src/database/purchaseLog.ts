@@ -139,7 +139,6 @@ export async function getProfitReport(
     const startTimestamp = timeStringToTimestamp(startTime);
     const endTimestamp = timeStringToTimestamp(endTime);
 
-    console.log(startTimestamp, endTimestamp);
     const attempts = await db.transaction("r", db.restockAttempts, () => {
         if (endTime === "now") {
             return db.restockAttempts

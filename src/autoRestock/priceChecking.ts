@@ -6,7 +6,7 @@ import { assume } from "@src/util/typeAssertions";
 import { waitForTabStatus } from "@src/util/tabControl";
 import { sleep } from "@src/util/randomDelay";
 import {
-    MIN_PROFIT_TO_BUY,
+    MIN_PROFIT_TO_BUY_JUNK,
     MIN_VALUE_TO_SHELVE,
 } from "@src/autoRestock/autoRestockConfig";
 import { getCurrentShopStock } from "@src/database/myShopStock";
@@ -15,7 +15,7 @@ export type PriceCheckOutcome = { tooManySearches?: true; onFairyQuest?: true };
 
 export async function checkPrice(
     itemName: string,
-    abortIfCheaperThan = MIN_PROFIT_TO_BUY.get(),
+    abortIfCheaperThan = MIN_PROFIT_TO_BUY_JUNK.get(),
 ): Promise<PriceCheckOutcome> {
     const numberOwned = await getCurrentShopStock(itemName);
     const { sections, tooManySearches, onFairyQuest } = await searchShopWizard(
