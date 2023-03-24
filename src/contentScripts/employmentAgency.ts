@@ -1,11 +1,7 @@
-import { $All } from "@src/util/domHelpers";
-import {
-    overlayButtonToCommitItemsForPricing,
-    stageItemForPricing,
-} from "@src/pricingQueue";
 import { getListings, Listing } from "@src/database/listings";
 import { openLink } from "@src/util/navigationHelpers";
 import { callProcedure } from "@src/controlPanel/procedure";
+import { $All } from "@src/util/domHelpers";
 
 function getFulfillPlan(quantity: number, topPrices: Listing[]) {
     const unGroupedPrices = topPrices.flatMap((price) =>
@@ -72,11 +68,7 @@ async function annotateJobPosting(row: HTMLElement) {
             shops.appendChild(shop);
         });
         row.appendChild(shops);
-    } else if (reward >= MIN_REWARD) {
-        stageItemForPricing(itemName);
     }
 }
 
-Promise.all($All('center td[colspan="2"]').map(annotateJobPosting)).then(
-    overlayButtonToCommitItemsForPricing,
-);
+$All('center td[colspan="2"]').map(annotateJobPosting);
