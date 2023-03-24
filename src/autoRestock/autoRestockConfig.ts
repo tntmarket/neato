@@ -29,14 +29,15 @@ export const MAX_COPIES_TO_SHELVE_IF_JUNK = 1;
 export const MAX_COPIES_TO_SHELVE = 3;
 export const MAX_COPIES_TO_SHELVE_IF_VALUABLE = 5;
 
-export const MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP = 1;
+export const MAX_DROUGHTS_UNTIL_GIVING_UP = 16;
+export const MAX_EMPTIES_UNTIL_ASSUMING_RESTOCK_BANNED = 8;
 export const TIME_BETWEEN_REFRESHES = 7777;
 // Wait ~3 minutes if we are restock banned
 export const TIME_BETWEEN_RESTOCK_BANS = 188_888;
 // Wait between restock runs
 export const TIME_BETWEEN_RESTOCK_CYCLES = 11_111;
 
-export const DAYS_BEFORE_REPRICING_SHOP_STOCK = 2;
+export const DAYS_BEFORE_REPRICING_SHOP_STOCK = 1.5;
 
 export const TIME_TO_CHOOSE_ITEM = getJsonSetting("Time to Choose Item", 999);
 export const TIME_TO_CHOOSE_ITEM_VARIANCE_RANGE = getJsonSetting(

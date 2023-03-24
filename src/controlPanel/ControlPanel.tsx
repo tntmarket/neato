@@ -1,39 +1,37 @@
-import React, { useEffect, useState } from "react";
-import { OnOffToggle } from "@src/controlPanel/OnOffToggle";
-import { PsuedoSuperShopWizard } from "@src/controlPanel/PsuedoSuperShopWizard";
-import { checkPrice, PriceCheckOutcome } from "@src/autoRestock/priceChecking";
-import { getProcedure } from "@src/controlPanel/procedure";
-import { NpcShopInput } from "@src/controlPanel/NpcShopInput";
-import { buyBestItemIfAny, BuyOutcome } from "@src/autoRestock/buyingItems";
-import { normalDelay } from "@src/util/randomDelay";
-import { getJsonSetting } from "@src/util/localStorage";
-import { getNextItemsToReprice } from "@src/priceMonitoring";
-import { getListings } from "@src/database/listings";
-import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
-import { useAccounts, waitTillNextHour } from "@src/accounts";
+import React, {useEffect, useState} from "react";
+import {OnOffToggle} from "@src/controlPanel/OnOffToggle";
+import {PsuedoSuperShopWizard} from "@src/controlPanel/PsuedoSuperShopWizard";
+import {checkPrice, PriceCheckOutcome} from "@src/autoRestock/priceChecking";
+import {getProcedure} from "@src/controlPanel/procedure";
+import {NpcShopInput, ShopIdToRefreshBudget,} from "@src/controlPanel/NpcShopInput";
+import {buyBestItemIfAny, BuyOutcome} from "@src/autoRestock/buyingItems";
+import {normalDelay} from "@src/util/randomDelay";
+import {getJsonSetting} from "@src/util/localStorage";
+import {getNextItemsToReprice} from "@src/priceMonitoring";
+import {getListings} from "@src/database/listings";
+import {undercutMarketPrices} from "@src/contentScriptActions/myShopStock";
+import {useAccounts, waitTillNextHour} from "@src/accounts";
 import browser from "webextension-polyfill";
-import { quickStockItems } from "@src/contentScriptActions/quickStock";
-import { MyShopStockBrowser } from "@src/controlPanel/MyShopStockBrowser";
-import { withdrawShopTill } from "@src/contentScriptActions/shopTill";
-import { PurchaseLog } from "@src/controlPanel/PurchaseLog";
+import {quickStockItems} from "@src/contentScriptActions/quickStock";
+import {MyShopStockBrowser} from "@src/controlPanel/MyShopStockBrowser";
+import {withdrawShopTill} from "@src/contentScriptActions/shopTill";
+import {PurchaseLog} from "@src/controlPanel/PurchaseLog";
 import {
-    MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP,
+    MAX_DROUGHTS_UNTIL_GIVING_UP,
+    MAX_EMPTIES_UNTIL_ASSUMING_RESTOCK_BANNED,
     TIME_BETWEEN_REFRESHES,
     TIME_BETWEEN_RESTOCK_BANS,
     TIME_BETWEEN_RESTOCK_CYCLES,
 } from "@src/autoRestock/autoRestockConfig";
-import { doDailies } from "@src/contentScriptActions/doDailies";
-import { PanelSection } from "@src/controlPanel/PanelSection";
-
-let latestAutomationSessionId = 0;
-
-class AutomationSettingChanged extends Error {}
+import {doDailies} from "@src/contentScriptActions/doDailies";
+import {PanelSection} from "@src/controlPanel/PanelSection";
+import {getTimeSinceLastRefresh} from "@src/database/purchaseLog";
+import {objectMap} from "@src/util/object";
 
 const MAX_REFRESHES_IN_ONE_SHOP = 20;
 
 export async function buyAllProfitableItems(
     shopId: number,
-    automationSessionId: number,
 ): Promise<BuyOutcome & { boughtAnyItem: boolean }> {
     let boughtAnyItem = false;
     for (
@@ -44,9 +42,6 @@ export async function buyAllProfitableItems(
         const outcome = await buyBestItemIfAny(shopId);
         console.log(outcome);
 
-        if (automationSessionId !== latestAutomationSessionId) {
-            throw new AutomationSettingChanged();
-        }
         if (outcome.status === "NOTHING_WORTH_BUYING") {
             return { ...outcome, boughtAnyItem };
         }
@@ -76,52 +71,72 @@ export async function buyAllProfitableItems(
     );
 }
 
+async function getShopWithMostBudget(
+    shopIdToRefreshBudget: ShopIdToRefreshBudget,
+): Promise<number> {
+    const shopIds = Object.keys(shopIdToRefreshBudget).map((key) =>
+        parseInt(key),
+    );
+    const timeSinceLastRefresh = await getTimeSinceLastRefresh(shopIds);
+    const shopIdToAvailableBudget: Record<string, number> = objectMap(
+        timeSinceLastRefresh,
+        (seconds, shopId) => seconds * shopIdToRefreshBudget[shopId],
+    );
+    console.log(shopIdToAvailableBudget);
+    return parseInt(
+        Object.entries(shopIdToAvailableBudget).sort(
+            ([_, budgetA], [__, budgetB]) => budgetB - budgetA,
+        )[0][0],
+    );
+}
+
 async function cycleThroughShopsUntilNoProfitableItems(
-    shopIds: number[],
+    shopIdToRefreshBudget: ShopIdToRefreshBudget,
 ): Promise<{ sawAnyItem: boolean; boughtAnyItem: boolean }> {
-    latestAutomationSessionId += 1;
     let boughtAnyItem = false;
     let sawAnyItem = false;
-    const automationSessionId = latestAutomationSessionId;
-    let numConsecutiveDroughts = 0;
-    while (numConsecutiveDroughts < MAX_DROUGHT_CYCLES_UNTIL_GIVING_UP) {
-        let boughtAnyItemInCycle = false;
-        for (const shopId of shopIds) {
-            const outcome = await buyAllProfitableItems(
-                shopId,
-                automationSessionId,
-            );
 
-            if (outcome.boughtAnyItem) {
-                boughtAnyItemInCycle = true;
-                boughtAnyItem = true;
-            }
+    let refreshesSinceBuy = 0;
+    let refreshesSinceSawItem = 0;
+    while (
+        refreshesSinceBuy < MAX_DROUGHTS_UNTIL_GIVING_UP &&
+        refreshesSinceSawItem < MAX_EMPTIES_UNTIL_ASSUMING_RESTOCK_BANNED
+    ) {
+        const shopIdWithMostBudget = await getShopWithMostBudget(
+            shopIdToRefreshBudget,
+        );
 
-            if (outcome.status !== "NPC_SHOP_IS_EMPTY") {
-                sawAnyItem = true;
-            }
+        const outcome = await buyAllProfitableItems(shopIdWithMostBudget);
 
-            if (
-                ["OUT_OF_MONEY", "OUT_OF_SPACE", "STUCK_IN_LOOP"].includes(
-                    outcome.status,
-                )
-            ) {
-                return { boughtAnyItem, sawAnyItem };
-            }
-
-            if (
-                ["NOTHING_WORTH_BUYING", "NPC_SHOP_IS_EMPTY"].includes(
-                    outcome.status,
-                )
-            ) {
-                // Wait before cycling to the next shop
-                await normalDelay(TIME_BETWEEN_REFRESHES);
-            }
-        }
-        if (boughtAnyItemInCycle) {
-            numConsecutiveDroughts = 0;
+        if (outcome.boughtAnyItem) {
+            boughtAnyItem = true;
+            refreshesSinceBuy = 0;
         } else {
-            numConsecutiveDroughts += 1;
+            refreshesSinceBuy += 1;
+        }
+
+        if (outcome.status !== "NPC_SHOP_IS_EMPTY") {
+            sawAnyItem = true;
+            refreshesSinceSawItem = 0;
+        } else {
+            refreshesSinceSawItem += 1;
+        }
+
+        if (
+            ["OUT_OF_MONEY", "OUT_OF_SPACE", "STUCK_IN_LOOP"].includes(
+                outcome.status,
+            )
+        ) {
+            return { boughtAnyItem, sawAnyItem };
+        }
+
+        if (
+            ["NOTHING_WORTH_BUYING", "NPC_SHOP_IS_EMPTY"].includes(
+                outcome.status,
+            )
+        ) {
+            // Wait before cycling to the next shop
+            await normalDelay(TIME_BETWEEN_REFRESHES);
         }
     }
     const restockBanned = !sawAnyItem;
@@ -163,7 +178,7 @@ async function repriceStalestItems(
 async function restockAndReprice(
     loggedIntoMainAccount: boolean,
     currentAccountCanSearch: boolean,
-    shopIds: number[],
+    shopIdToRefreshBudget: ShopIdToRefreshBudget,
     switchAccount: (accountId: number) => Promise<void>,
     switchToUnbannedAccount: () => Promise<boolean>,
     recordBanTime: () => void,
@@ -187,11 +202,13 @@ async function restockAndReprice(
         return { tooManySearches: true, anySearchWasDone: false };
     }
 
-    const autoBuy = Boolean(shopIds.length > 0);
+    const autoBuy = Boolean(Object.keys(shopIdToRefreshBudget).length > 0);
     if (loggedIntoMainAccount) {
         if (autoBuy) {
             await withdrawShopTill();
-            await cycleThroughShopsUntilNoProfitableItems(shopIds);
+            await cycleThroughShopsUntilNoProfitableItems(
+                shopIdToRefreshBudget,
+            );
             await quickStockItems();
         }
 
@@ -224,12 +241,24 @@ async function restockAndReprice(
     }
 }
 
-const shopIdsSetting = getJsonSetting("shopIds", [1, 7, 14, 15, 98, 4]);
+const shopIdToRefreshBudgetSetting = getJsonSetting<ShopIdToRefreshBudget>(
+    "shopIdToRefreshBudget",
+    {
+        1: 1,
+        7: 1,
+        14: 1,
+        15: 1,
+        98: 1,
+        4: 1,
+    },
+);
 
 const CONSECUTIVE_FAILURES_BEFORE_ABORT = 10;
 
 export function ControlPanel() {
-    const [shopIds, setShopIds] = useState(shopIdsSetting.get());
+    const [shopIdToRefreshBudget, setShopIdToRefreshBudget] = useState(
+        shopIdToRefreshBudgetSetting.get(),
+    );
 
     const [consecutiveFailures, setConsecutiveFailures] = useState(0);
     const [isDoingRun, setIsDoingRun] = useState(false);
@@ -271,7 +300,7 @@ export function ControlPanel() {
             restockAndReprice(
                 loggedIntoMainAccount,
                 currentAccountCanSearch,
-                shopIds,
+                shopIdToRefreshBudget,
                 switchAccount,
                 switchToUnbannedAccount,
                 recordBanTime,
@@ -358,10 +387,12 @@ export function ControlPanel() {
                 <PanelSection name="Accounts">{accountsUI}</PanelSection>
                 <PanelSection name="Auto Buy Configuration">
                     <NpcShopInput
-                        value={shopIds}
-                        onChange={(shopIds) => {
-                            setShopIds(shopIds);
-                            shopIdsSetting.set(shopIds);
+                        value={shopIdToRefreshBudget}
+                        onChange={(shopIdToRefreshBudget) => {
+                            setShopIdToRefreshBudget(shopIdToRefreshBudget);
+                            shopIdToRefreshBudgetSetting.set(
+                                shopIdToRefreshBudget,
+                            );
                         }}
                     />
                 </PanelSection>

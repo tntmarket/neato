@@ -123,7 +123,41 @@ export function timeStringToTimestamp(timeString: string): number {
     if (timeString.endsWith("h")) {
         return Date.now() + (parseInt(timeString) || 0) * 1000 * 60 * 60;
     }
+    if (timeString.endsWith("m")) {
+        return Date.now() + (parseInt(timeString) || 0) * 1000 * 60;
+    }
     return new Date(timeString).getTime() || Date.now();
+}
+
+type ShopIdToSeconds = {
+    [shopId: number]: number;
+};
+
+export async function getTimeSinceLastRefresh(
+    shopIds: number[],
+    defaultSeconds = 1800,
+): Promise<ShopIdToSeconds> {
+    const restockAttempts = await db.transaction(
+        "r",
+        db.restockAttempts,
+        () => {
+            return db.restockAttempts
+                .where("time")
+                .above(timeStringToTimestamp("-30m"))
+                .toArray();
+        },
+    );
+
+    const now = Date.now();
+    const shopIdToTimeSinceLastRefresh: ShopIdToSeconds = {};
+    shopIds.forEach((shopId) => {
+        shopIdToTimeSinceLastRefresh[shopId] = defaultSeconds;
+    });
+    restockAttempts.forEach((attempt) => {
+        shopIdToTimeSinceLastRefresh[attempt.shopId] =
+            (now - attempt.time) / 1000;
+    });
+    return shopIdToTimeSinceLastRefresh;
 }
 
 export async function getProfitReport(

@@ -2,35 +2,41 @@ import React, { useState } from "react";
 import { configurableSettings } from "@src/autoRestock/autoRestockConfig";
 import { NumberSettingInput } from "@src/controlPanel/NumberSettingInput";
 
+export type ShopIdToRefreshBudget = {
+    [shopId: string]: number;
+};
+
 type Props = {
-    value: number[];
-    onChange: (shopIds: number[]) => void;
+    value: ShopIdToRefreshBudget;
+    onChange: (shopIdToRefreshBudget: ShopIdToRefreshBudget) => void;
 };
 
 export function NpcShopInput({ value, onChange }: Props) {
     const [showExtraSettings, setShowExtraSettings] = useState(false);
-    const [shopIds, setShopIds] = useState(JSON.stringify(value));
+    const [shopIdToRefreshBudget, setShopIdToRefreshBudget] = useState(
+        JSON.stringify(value, null, 2),
+    );
 
     return (
         <div>
             <div className="form-control">
-                <label className="label">
-                    <span className="label-text-alt">NPC Shops to Monitor</span>
-                </label>
-                <input
-                    type="text"
-                    placeholder="[1,7]"
-                    className="input input-bordered input-primary w-full"
-                    value={shopIds}
+                <textarea
+                    placeholder="{1:1, 7:1, 14:1, 15:1, 98:1, 4:1}"
+                    className="textarea textarea-bordered textarea-xs textarea-primary h-28"
+                    value={shopIdToRefreshBudget}
                     onChange={(event) => {
-                        setShopIds(event.target.value);
+                        setShopIdToRefreshBudget(event.target.value);
 
-                        const inputtedShopIds = tryParseJson<number[]>(
-                            event.target.value,
-                        );
+                        const inputtedShopIds =
+                            tryParseJson<ShopIdToRefreshBudget>(
+                                event.target.value,
+                            );
                         if (
                             inputtedShopIds &&
-                            !isEqual(tryParseJson(shopIds), inputtedShopIds)
+                            !isEqual(
+                                tryParseJson(shopIdToRefreshBudget),
+                                inputtedShopIds,
+                            )
                         ) {
                             onChange(inputtedShopIds);
                         }
@@ -77,25 +83,8 @@ export function NpcShopInput({ value, onChange }: Props) {
     );
 }
 
-function isEqual<T>(
-    xs: T[] | null | undefined,
-    ys: T[] | null | undefined,
-): boolean {
-    if (xs === ys) {
-        return true;
-    }
-    if (xs == null || ys == null) {
-        return false;
-    }
-    if (xs.length !== ys.length) {
-        return false;
-    }
-    for (let i = 0; i < xs.length; i += 1) {
-        if (xs[i] !== ys[i]) {
-            return false;
-        }
-    }
-    return true;
+function isEqual<T>(x: T | null | undefined, y: T | null | undefined): boolean {
+    return JSON.stringify(x) === JSON.stringify(y);
 }
 
 function tryParseJson<T>(x: string): T | null {

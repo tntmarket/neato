@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import {getProfitReport, timeStringToTimestamp} from "@src/database/purchaseLog";
+import {
+    getProfitReport,
+    timeStringToTimestamp,
+} from "@src/database/purchaseLog";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import {
@@ -32,19 +35,22 @@ const shopIdToName: {
     [shopId: number]: string;
 } = {
     1: "Food",
+    4: "Clothes",
     7: "Book",
+    8: "Card",
     14: "Chocolate",
     15: "Baked",
-    98: "Plushie",
-    4: "Clothes",
-    37: "Snow Food",
-    73: "Kayla's Potion",
-    8: "Card",
-    48: "Usuki",
     20: "Tropical Food",
+    22: "Space Food",
     30: "Spooky Food",
     35: "Slushie",
+    37: "Snow Food",
+    48: "Usuki",
+    66: "Kiko Lake Food",
+    73: "Kayla's Potion",
     81: "Brightvale Fruit",
+    90: "Qasalan Food",
+    98: "Plushie",
 };
 
 const PAGE_SIZE = 50;
