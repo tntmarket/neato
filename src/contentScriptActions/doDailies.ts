@@ -30,8 +30,8 @@ const dailyLinks = [
     "/jelly/jelly.phtml",
     "/prehistoric/omelette.phtml",
     "/pirates/forgottenshore.phtml",
-    "/safetydeposit.phtml?obj_name=Five+Dubloon+Coin&category=3",
-    "/pirates/academy.phtml?type=status",
+    "/safetydeposit.phtml?obj_name=&category=2",
+    "/island/training.phtml?type=status",
     "/pirates/foodclub.phtml?type=collect",
     "https://foodclub.neocities.org/",
 ];

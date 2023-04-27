@@ -309,3 +309,24 @@ function academyTraining() {
 if (location.href.includes("academy.phtml")) {
     academyTraining();
 }
+
+function islandTraining() {
+    if (location.href.includes("process_training.phtml")) {
+        location.assign("/island/training.phtml?type=courses");
+    }
+    if (location.href.includes("type=status")) {
+        // getInputByValue("Pay")?.click();
+        getInputByValue("Complete Course!")?.click();
+    }
+    if (location.href.includes("type=courses")) {
+        const courseType = assume(
+            $<HTMLSelectElement>('select[name="course_type"]'),
+        );
+        courseType.value = "Endurance";
+        // getInput("Start Course")?.click();
+    }
+}
+
+if (location.href.includes("training.phtml")) {
+    islandTraining();
+}
