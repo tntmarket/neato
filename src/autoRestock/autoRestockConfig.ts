@@ -29,8 +29,8 @@ export const MAX_COPIES_TO_SHELVE_IF_JUNK = 1;
 export const MAX_COPIES_TO_SHELVE = 3;
 export const MAX_COPIES_TO_SHELVE_IF_VALUABLE = 5;
 
-export const MAX_DROUGHTS_UNTIL_GIVING_UP = 16;
-export const MAX_EMPTIES_UNTIL_ASSUMING_RESTOCK_BANNED = 8;
+export const MAX_DROUGHTS_UNTIL_GIVING_UP = 7;
+export const MAX_EMPTIES_UNTIL_ASSUMING_RESTOCK_BANNED = 5;
 export const TIME_BETWEEN_REFRESHES = 7777;
 // Wait ~3 minutes if we are restock banned
 export const TIME_BETWEEN_RESTOCK_BANS = 188_888;
