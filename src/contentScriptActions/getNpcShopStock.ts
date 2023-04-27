@@ -118,6 +118,12 @@ export class HaggleSession {
             action: "GET_HAGGLE_SITUATION",
         });
     }
+
+    async refreshTab(): Promise<void> {
+        await browser.tabs.reload(this.tabId, { bypassCache: true });
+        await sleep(100);
+        await ensureHaggleScriptInjected(this.tabId);
+    }
 }
 
 async function ensureHaggleScriptInjected(tabId: number) {

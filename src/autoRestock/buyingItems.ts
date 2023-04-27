@@ -302,6 +302,9 @@ export type BuyOutcome =
           status: "SOLD_OUT";
       }
     | {
+          status: "KEPT_BUYING_TOO_SOON";
+      }
+    | {
           status: "STUCK_IN_LOOP";
           offer: number;
           currentAsk: number;
@@ -368,7 +371,10 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
         if (situation.status === "BOUGHT_TOO_SOON") {
             await sleep(5000);
             await normalDelay(1111);
-            return buyBestItemIfAny(shopId);
+            // For some reason, it's possible to get the "5 second" error,
+            // even after waiting 5 seconds. In these cases, just refresh the haggle window
+            await session.refreshTab();
+            continue;
         }
         if (situation.status === "SOLD_OUT") {
             await normalDelay(1111);
@@ -408,6 +414,14 @@ export async function buyBestItemIfAny(shopId: number): Promise<BuyOutcome> {
             TIME_TO_MAKE_HAGGLE_VARIANCE_RANGE.get(),
         );
         await session.makeOffer(nextOffer);
+    }
+
+    situation = assume(situation);
+
+    if (situation.status === "BOUGHT_TOO_SOON") {
+        return {
+            status: "KEPT_BUYING_TOO_SOON",
+        };
     }
 
     return {

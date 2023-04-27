@@ -108,6 +108,10 @@ function extractNumber(element: HTMLElement): number {
 async function getHaggleSituation(): Promise<HaggleSituation> {
     const text = assume($(".container")?.innerText);
     if (text.includes("Due to massive demand")) {
+        // Prepare to refresh, and bypass the "Confirm Form Resubmission" Dialog
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        window.history.replaceState(null, null, window.location.href);
         return {
             status: "BOUGHT_TOO_SOON",
         };

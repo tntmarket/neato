@@ -65,6 +65,10 @@ export async function buyAllProfitableItems(
             return { ...outcome, boughtAnyItem };
         }
 
+        if (outcome.status === "KEPT_BUYING_TOO_SOON") {
+            return { ...outcome, boughtAnyItem };
+        }
+
         if (outcome.status === "OFFER_ACCEPTED") {
             boughtAnyItem = true;
         }
