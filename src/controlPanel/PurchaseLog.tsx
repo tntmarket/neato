@@ -31,10 +31,11 @@ ChartJS.register(
 
 dayjs.extend(relativeTime);
 
-const shopIdToName: {
+export const shopIdToName: {
     [shopId: number]: string;
 } = {
     1: "Food",
+    3: "Toy",
     4: "Clothes",
     7: "Book",
     8: "Card",
@@ -51,6 +52,8 @@ const shopIdToName: {
     81: "Brightvale Fruit",
     90: "Qasalan Food",
     98: "Plushie",
+    108: "Mystical Surroundings",
+    111: "Cog's Togs",
 };
 
 const PAGE_SIZE = 50;
