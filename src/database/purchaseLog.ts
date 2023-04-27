@@ -135,7 +135,7 @@ type ShopIdToSeconds = {
 
 export async function getTimeSinceLastRefresh(
     shopIds: number[],
-    defaultSeconds = 1800,
+    defaultSeconds = 3600,
 ): Promise<ShopIdToSeconds> {
     const restockAttempts = await db.transaction(
         "r",
@@ -143,7 +143,7 @@ export async function getTimeSinceLastRefresh(
         () => {
             return db.restockAttempts
                 .where("time")
-                .above(timeStringToTimestamp("-30m"))
+                .above(timeStringToTimestamp("-1h"))
                 .toArray();
         },
     );
