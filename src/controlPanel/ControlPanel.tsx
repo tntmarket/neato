@@ -1,21 +1,24 @@
-import React, {useEffect, useState} from "react";
-import {OnOffToggle} from "@src/controlPanel/OnOffToggle";
-import {PsuedoSuperShopWizard} from "@src/controlPanel/PsuedoSuperShopWizard";
-import {checkPrice, PriceCheckOutcome} from "@src/autoRestock/priceChecking";
-import {getProcedure} from "@src/controlPanel/procedure";
-import {NpcShopInput, ShopIdToRefreshBudget,} from "@src/controlPanel/NpcShopInput";
-import {buyBestItemIfAny, BuyOutcome} from "@src/autoRestock/buyingItems";
-import {normalDelay} from "@src/util/randomDelay";
-import {getJsonSetting} from "@src/util/localStorage";
-import {getNextItemsToReprice} from "@src/priceMonitoring";
-import {getListings} from "@src/database/listings";
-import {undercutMarketPrices} from "@src/contentScriptActions/myShopStock";
-import {useAccounts, waitTillNextHour} from "@src/accounts";
+import React, { useEffect, useState } from "react";
+import { OnOffToggle } from "@src/controlPanel/OnOffToggle";
+import { PsuedoSuperShopWizard } from "@src/controlPanel/PsuedoSuperShopWizard";
+import { checkPrice, PriceCheckOutcome } from "@src/autoRestock/priceChecking";
+import { getProcedure } from "@src/controlPanel/procedure";
+import {
+    NpcShopInput,
+    ShopIdToRefreshBudget,
+} from "@src/controlPanel/NpcShopInput";
+import { buyBestItemIfAny, BuyOutcome } from "@src/autoRestock/buyingItems";
+import { normalDelay } from "@src/util/randomDelay";
+import { getJsonSetting } from "@src/util/localStorage";
+import { getNextItemsToReprice } from "@src/priceMonitoring";
+import { getListings } from "@src/database/listings";
+import { undercutMarketPrices } from "@src/contentScriptActions/myShopStock";
+import { useAccounts, waitTillNextHour } from "@src/accounts";
 import browser from "webextension-polyfill";
-import {quickStockItems} from "@src/contentScriptActions/quickStock";
-import {MyShopStockBrowser} from "@src/controlPanel/MyShopStockBrowser";
-import {withdrawShopTill} from "@src/contentScriptActions/shopTill";
-import {PurchaseLog} from "@src/controlPanel/PurchaseLog";
+import { quickStockItems } from "@src/contentScriptActions/quickStock";
+import { MyShopStockBrowser } from "@src/controlPanel/MyShopStockBrowser";
+import { withdrawShopTill } from "@src/contentScriptActions/shopTill";
+import { PurchaseLog, shopIdToName } from "@src/controlPanel/PurchaseLog";
 import {
     MAX_DROUGHTS_UNTIL_GIVING_UP,
     MAX_EMPTIES_UNTIL_ASSUMING_RESTOCK_BANNED,
@@ -23,10 +26,10 @@ import {
     TIME_BETWEEN_RESTOCK_BANS,
     TIME_BETWEEN_RESTOCK_CYCLES,
 } from "@src/autoRestock/autoRestockConfig";
-import {doDailies} from "@src/contentScriptActions/doDailies";
-import {PanelSection} from "@src/controlPanel/PanelSection";
-import {getTimeSinceLastRefresh} from "@src/database/purchaseLog";
-import {objectMap} from "@src/util/object";
+import { doDailies } from "@src/contentScriptActions/doDailies";
+import { PanelSection } from "@src/controlPanel/PanelSection";
+import { getTimeSinceLastRefresh } from "@src/database/purchaseLog";
+import { objectMap } from "@src/util/object";
 
 const MAX_REFRESHES_IN_ONE_SHOP = 20;
 
@@ -82,7 +85,18 @@ async function getShopWithMostBudget(
         timeSinceLastRefresh,
         (seconds, shopId) => seconds * shopIdToRefreshBudget[shopId],
     );
-    console.log(shopIdToAvailableBudget);
+    console.log(
+        Object.entries(shopIdToAvailableBudget)
+            .sort(([_, budgetA], [__, budgetB]) => budgetB - budgetA)
+            .map(
+                ([shopId, budget]) =>
+                    `${".".repeat(Math.round(budget / 10))} ${
+                        shopIdToName[parseInt(shopId)]
+                    } (${Math.round(budget)})`,
+            )
+            .join("\n"),
+    );
+
     return parseInt(
         Object.entries(shopIdToAvailableBudget).sort(
             ([_, budgetA], [__, budgetB]) => budgetB - budgetA,
