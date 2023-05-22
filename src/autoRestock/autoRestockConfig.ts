@@ -65,7 +65,6 @@ export const configurableSettings = [
 ];
 
 export const ITEMS_TO_ALWAYS_DEPOSIT = [
-    "Five Dubloon Coin",
     "Spooky Treasure Map",
     "Piece of a treasure map",
     "Underwater Map Piece",
