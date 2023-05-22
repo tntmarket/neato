@@ -50,15 +50,18 @@ ensureListener(
 );
 
 function shopItemToStockData(item: HTMLElement): NpcStockData {
+    const priceTag = item
+        .querySelectorAll<HTMLInputElement>(".item-stock")[1]
+        .innerText.split("Cost: ")[1];
+
+    // Take second price in case of five-finger discount
+    const priceTags = priceTag.replace("\n", "").split("NP");
+    const discountedPrice = priceTags[priceTags.length - 2].replaceAll(",", "");
+
     return {
         itemName: assume(item.querySelector<HTMLElement>(".item-name"))
             .innerText,
-        price: parseInt(
-            item
-                .querySelectorAll<HTMLInputElement>(".item-stock")[1]
-                .innerText.split("Cost: ")[1]
-                .replaceAll(",", ""),
-        ),
+        price: parseInt(discountedPrice),
         quantity: parseInt(
             assume(item.querySelectorAll<HTMLElement>(".item-stock")[0])
                 .innerText,
