@@ -48,7 +48,7 @@ async function setPage(tabId: number, page = 1) {
 }
 
 const MIN_PAGE = 1;
-const MAX_PAGE = 100;
+const MAX_PAGE = 200;
 
 async function setShopStockPrices(
     tabId: number,
