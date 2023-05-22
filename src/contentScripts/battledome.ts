@@ -1,23 +1,28 @@
-import { $, waitForElementToExist } from "@src/util/domHelpers";
-import { normalDelay } from "@src/util/randomDelay";
+import {
+    $,
+    waitForCondition,
+    waitForElementToExist,
+} from "@src/util/domHelpers";
+import { normalDelay, sleep } from "@src/util/randomDelay";
 import { assume } from "@src/util/typeAssertions";
 
-function waitForEquipmentSelectorToAppear() {
-    // Wait for equipment selector to appear
-    return new Promise<void>((resolve) => {
-        const observer = new MutationObserver(async () => {
-            if (equipmentPopup.style.display === "block") {
-                observer.disconnect();
-                resolve();
-            }
-        });
+async function waitForEquipmentSelectorToAppear(openSelector: string) {
+    console.log("waiting for equipment popup");
+    const openButton = await waitForElementToExist(openSelector);
+    return waitForCondition(() => {
+        openButton.click();
+        const popup = assume($("#p1equipment"));
+        return popup.style.display === "block";
+    });
+}
 
-        const equipmentPopup = assume($("#p1equipment"));
-        observer.observe(equipmentPopup, {
-            attributes: true,
-            childList: true,
-            subtree: true,
-        });
+async function waitForAbilitySelectorToAppear(openSelector: string) {
+    console.log("waiting for ability popup");
+    const openButton = await waitForElementToExist(openSelector);
+    return waitForCondition(() => {
+        openButton.click();
+        const popup = assume($("#p1ability"));
+        return popup.style.display === "block";
     });
 }
 
@@ -51,32 +56,33 @@ async function completeBattle() {
     }
 
     const startButton = await waitForElementToExist("#start");
-    await normalDelay(555);
+    await sleep(111);
     startButton.click();
 
-    // const mainHandSelector = assume($("#p1e1m"));
-    // mainHandSelector.click();
+    await waitForEquipmentSelectorToAppear("#p1e1m");
+    (await waitForElementToExist('[title="Varia is the Bomb"]')).click();
+    await waitForElementToExist("#p1e1m.selected");
 
-    const offHandSelector = await waitForElementToExist("#p1e2m");
-    const waitEquipmentSelector = waitForEquipmentSelectorToAppear();
-    await normalDelay(555);
-    offHandSelector.click();
-    await waitEquipmentSelector;
-
-    const cursedElixir = await waitForElementToExist('[title="Cursed Elixir"]');
-    cursedElixir.click();
+    await waitForEquipmentSelectorToAppear("#p1e2m");
+    (await waitForElementToExist('[title="Cursed Elixir"]')).click();
     await waitForElementToExist("#p1e2m.selected");
 
-    // const abilitySelector = assume($("#p1am"));
-    // abilitySelector.click();
+    await waitForAbilitySelectorToAppear("#p1am");
+    (await waitForElementToExist('[title="Lens Flare"] img')).click();
+    await waitForCondition(() => {
+        const selectedAbility = assume($("#p1am div")).style.backgroundImage;
+        return selectedAbility?.includes("lensflare");
+    });
+
+    await normalDelay(555);
 
     const fightButton = await waitForElementToExist("#fight");
-    await normalDelay(555);
+    await sleep(111);
     skipAsSoonAsDamageHappens();
     fightButton.click();
 
     const collectRewards = await waitForElementToExist("button.collect");
-    await normalDelay(555);
+    await sleep(111);
     collectRewards.click();
 
     const rewardText = (await waitForElementToExist("#bd_rewards")).innerText;

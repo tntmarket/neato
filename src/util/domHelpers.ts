@@ -1,5 +1,6 @@
 import { sleep } from "@src/util/randomDelay";
 import { setInterval, clearInterval } from "worker-timers";
+import { assume } from "@src/util/typeAssertions";
 
 export function $All<E extends HTMLElement = HTMLElement>(selector: string) {
     return Array.from(document.querySelectorAll<E>(selector));
@@ -38,13 +39,33 @@ export function getInputByValue(value: string): HTMLInputElement | null {
     return document.querySelector(`input[value="${value}"]`);
 }
 
-export function waitForElementToExist(selector: string): Promise<HTMLElement> {
+export async function waitForElementToExist(
+    selector: string,
+    debugLogging = true,
+): Promise<HTMLElement> {
+    if (debugLogging) {
+        console.log(`waiting for ${selector}`);
+    }
+
+    let element = $(selector);
+    await waitForCondition(() => {
+        element = $(selector);
+        return element !== null;
+    });
+
+    if (debugLogging) {
+        console.log(assume(element));
+    }
+
+    return assume(element);
+}
+
+export function waitForCondition(condition: () => boolean): Promise<void> {
     return new Promise((resolve) => {
         const elementPoller = setInterval(() => {
-            const element = $(selector);
-            if (element) {
+            if (condition()) {
                 clearInterval(elementPoller);
-                resolve(element);
+                resolve();
             }
         }, 100);
     });
